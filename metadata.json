@@ -1,0 +1,5 @@
+{
+  "name": "Starfield Outpost Optimizer",
+  "description": "Calculate the most efficient planetary resource routes for your Starfield construction projects. Find the minimum number of planets needed for any craftable item.",
+  "requestFramePermissions": []
+}
