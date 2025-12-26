@@ -15,8 +15,13 @@ export interface PlanetData {
   resources: string[];
 }
 
-// A comprehensive selection of constructible items including the end-game Vytinium Fuel Rod hierarchy
+/**
+ * Comprehensive Starfield Manufactured Goods Database
+ * Organized by Tier (Basic to Unique/Tier 4)
+ * Based on Industrial Workbench recipes.
+ */
 export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
+  // --- TIER 4 (UNIQUE / MASTER) ---
   {
     name: "Vytinium Fuel Rod",
     requirements: [
@@ -27,11 +32,12 @@ export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
     ]
   },
   {
-    name: "Nuclear Fuel Rod",
+    name: "Aldumite Drilling Rig",
     requirements: [
-      { name: "Semimetal Wafer", amount: "1" },
-      { name: "Uranium", amount: "2" },
-      { name: "Solvent", amount: "1" }
+      { name: "Aldumite", amount: "1" },
+      { name: "Cesium", amount: "2" },
+      { name: "Drilling Rig", amount: "1" },
+      { name: "Microsecond Regulator", amount: "1" }
     ]
   },
   {
@@ -44,19 +50,29 @@ export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
     ]
   },
   {
-    name: "Semimetal Wafer",
+    name: "Substrate Molecule Sieve",
     requirements: [
-      { name: "Antimony", amount: "1" },
-      { name: "Gold", amount: "1" }
+      { name: "Ionic Liquids", amount: "2" },
+      { name: "Molecular Sieve", amount: "1" },
+      { name: "Biosuppressant", amount: "1" }
     ]
   },
   {
-    name: "Advanced Reactor",
+    name: "Nuclear Fuel Rod",
     requirements: [
-      { name: "Mag-Pressure Tank", amount: "2" },
-      { name: "Isocentered Magnet", amount: "4" },
-      { name: "Tau Grade Rheostat", amount: "3" },
-      { name: "Europium", amount: "2" }
+      { name: "Semimetal Wafer", amount: "1" },
+      { name: "Uranium", amount: "2" },
+      { name: "Solvent", amount: "1" }
+    ]
+  },
+
+  // --- TIER 3 (EXOTIC / ADVANCED) ---
+  {
+    name: "Positron Battery",
+    requirements: [
+      { name: "Antimony", amount: "1" },
+      { name: "Lead", amount: "2" },
+      { name: "Mercury", amount: "1" }
     ]
   },
   {
@@ -68,11 +84,41 @@ export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
     ]
   },
   {
-    name: "Substrate Molecule Sieve",
+    name: "Supercooled Magnet",
     requirements: [
-      { name: "Ionic Liquids", amount: "2" },
-      { name: "Molecular Sieve", amount: "1" },
-      { name: "Biosuppressant", amount: "1" }
+      { name: "Isocentered Magnet", amount: "1" },
+      { name: "Neodymium", amount: "1" }
+    ]
+  },
+  {
+    name: "Zero-G Gimbal",
+    requirements: [
+      { name: "Aluminum", amount: "2" },
+      { name: "Nickel", amount: "1" },
+      { name: "Iron", amount: "1" }
+    ]
+  },
+  {
+    name: "Paramagnon Conductor",
+    requirements: [
+      { name: "Neodymium", amount: "1" },
+      { name: "Gold", amount: "1" }
+    ]
+  },
+  {
+    name: "Semimetal Wafer",
+    requirements: [
+      { name: "Antimony", amount: "1" },
+      { name: "Gold", amount: "1" }
+    ]
+  },
+
+  // --- TIER 2 (UNCOMMON / REFINED) ---
+  {
+    name: "Drilling Rig",
+    requirements: [
+      { name: "Reactive Gauge", amount: "1" },
+      { name: "Milling Drum", amount: "1" }
     ]
   },
   {
@@ -83,6 +129,60 @@ export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
     ]
   },
   {
+    name: "Mag-Pressure Tank",
+    requirements: [
+      { name: "Aluminum", amount: "1" },
+      { name: "Nickel", amount: "1" }
+    ]
+  },
+  {
+    name: "Microsecond Regulator",
+    requirements: [
+      { name: "Aluminum", amount: "1" },
+      { name: "Copper", amount: "1" },
+      { name: "Beryllium", amount: "1" }
+    ]
+  },
+  {
+    name: "Austenitic Manifold",
+    requirements: [
+      { name: "Nickel", amount: "2" },
+      { name: "Iron", amount: "1" },
+      { name: "Copper", amount: "1" }
+    ]
+  },
+  {
+    name: "Milling Drum",
+    requirements: [
+      { name: "Aluminum", amount: "2" },
+      { name: "Iron", amount: "1" },
+      { name: "Nickel", amount: "1" }
+    ]
+  },
+  {
+    name: "Molecular Sieve",
+    requirements: [
+      { name: "Mag-Pressure Tank", amount: "1" },
+      { name: "Ionic Liquids", amount: "2" }
+    ]
+  },
+  {
+    name: "Monoclinic Lattice",
+    requirements: [
+      { name: "Lithium", amount: "2" },
+      { name: "Cesium", amount: "1" }
+    ]
+  },
+
+  // --- TIER 1 (BASIC) ---
+  {
+    name: "Adaptive Frame",
+    requirements: [
+      { name: "Iron", amount: "1" },
+      { name: "Aluminum", amount: "1" }
+    ]
+  },
+  {
     name: "Isocentered Magnet",
     requirements: [
       { name: "Iron", amount: "1" },
@@ -90,10 +190,10 @@ export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
     ]
   },
   {
-    name: "Mag-Pressure Tank",
+    name: "Reactive Gauge",
     requirements: [
       { name: "Aluminum", amount: "1" },
-      { name: "Nickel", amount: "1" }
+      { name: "Copper", amount: "1" }
     ]
   },
   {
@@ -102,17 +202,9 @@ export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
       { name: "Copper", amount: "1" },
       { name: "Beryllium", amount: "1" }
     ]
-  },
-  {
-    name: "Adaptive Frame",
-    requirements: [
-      { name: "Iron", amount: "1" },
-      { name: "Aluminum", amount: "1" }
-    ]
   }
 ];
 
-// Resources map for calculation and UI badges
 export const RESOURCE_MAP: Record<string, string[]> = {
   "Iron": ["Fe"],
   "Aluminum": ["Al"],
@@ -131,25 +223,30 @@ export const RESOURCE_MAP: Record<string, string[]> = {
   "Antimony": ["Sb"],
   "Gold": ["Au"],
   "Uranium": ["U"],
-  "Vytinium": ["Vy"]
+  "Vytinium": ["Vy"],
+  "Helium-3": ["He-3"],
+  "Mercury": ["Hg"],
+  "Neodymium": ["Nd"],
+  "Lithium": ["Li"],
+  "Aldumite": ["Ad"]
 };
 
-// Expanded planetary database to include locations for high-tier exotic resources
 export const PLANETS: PlanetData[] = [
-  { name: "Decaran VII-b", system: "Decaran", resources: ["Vytinium", "Uranium", "Lead"] },
-  { name: "Schrodinger III", system: "Schrodinger", resources: ["Indicite", "Cesium", "Solvent"] },
-  { name: "Linnaeus IV-b", system: "Linnaeus", resources: ["Iron", "Aluminum", "Beryllium", "Europium"] },
-  { name: "Hui II", system: "Hui", resources: ["Nickel", "Cobalt", "Lead", "Palladium"] },
-  { name: "Maheo I", system: "Maheo", resources: ["Copper", "Iron", "Nickel"] },
-  { name: "Tau Ceti VIII-b", system: "Tau Ceti", resources: ["Aluminum", "Iron", "Beryllium"] },
-  { name: "Zamka", system: "Alpha Centauri", resources: ["Nickel", "Iron", "Cobalt", "Copper", "Antimony"] },
-  { name: "Andraphon", system: "Narion", resources: ["Iron", "Aluminum", "Beryllium", "Europium"] },
-  { name: "Kreet", system: "Narion", resources: ["Iron", "Lead", "Silver"] },
-  { name: "Sumati", system: "Narion", resources: ["Lead", "Copper", "Fluorine", "Antimony"] },
+  { name: "Decaran VII-b", system: "Decaran", resources: ["Vytinium", "Uranium", "Lead", "Helium-3"] },
+  { name: "Schrodinger III", system: "Schrodinger", resources: ["Indicite", "Cesium", "Solvent", "Iron"] },
+  { name: "Linnaeus IV-b", system: "Linnaeus", resources: ["Iron", "Aluminum", "Beryllium", "Europium", "Helium-3"] },
+  { name: "Hui II", system: "Hui", resources: ["Nickel", "Cobalt", "Lead", "Palladium", "Helium-3"] },
+  { name: "Maheo I", system: "Maheo", resources: ["Copper", "Iron", "Nickel", "Helium-3", "Neodymium"] },
+  { name: "Tau Ceti VIII-b", system: "Tau Ceti", resources: ["Aluminum", "Iron", "Beryllium", "Argon"] },
+  { name: "Zamka", system: "Alpha Centauri", resources: ["Nickel", "Iron", "Cobalt", "Copper", "Antimony", "Helium-3"] },
+  { name: "Andraphon", system: "Narion", resources: ["Iron", "Aluminum", "Beryllium", "Europium", "Helium-3"] },
+  { name: "Kreet", system: "Narion", resources: ["Iron", "Lead", "Silver", "Helium-3", "Lithium"] },
+  { name: "Sumati", system: "Narion", resources: ["Lead", "Copper", "Fluorine", "Antimony", "Mercury"] },
   { name: "Washakie", system: "Cheyenne", resources: ["Lead", "Silver", "Neon", "Uranium"] },
   { name: "Montara Luna", system: "Cheyenne", resources: ["Aluminum", "Nickel", "Cobalt"] },
   { name: "Guniibuu II", system: "Guniibuu", resources: ["Aluminum", "Beryllium", "Gold"] },
   { name: "Nesoi", system: "Olympus", resources: ["Iron", "Uranium", "Argon"] },
-  { name: "Tidacha I", system: "Tidacha", resources: ["Ionic Liquids", "Biosuppressant"] },
-  { name: "Jaffa IV", system: "Jaffa", resources: ["Gold", "Copper", "Lead"] }
+  { name: "Tidacha I", system: "Tidacha", resources: ["Ionic Liquids", "Biosuppressant", "Copper"] },
+  { name: "Jaffa IV", system: "Jaffa", resources: ["Gold", "Copper", "Lead", "Lithium"] },
+  { name: "Schrodinger VIII-a", system: "Schrodinger", resources: ["Aldumite", "Iron", "Uranium"] }
 ];

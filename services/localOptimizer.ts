@@ -34,8 +34,11 @@ function canManufacture(planetResources: string[], itemName: string): string[] |
 export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionAnalysis => {
   if (itemNames.length === 0) throw new Error("No items selected.");
 
+  // Phase 1: Initial Requirement Aggregation
   const aggregatedRaw = aggregateRequirements(itemNames);
-  const rawResourcesNeeded = Object.keys(aggregatedRaw);
+  let rawResourcesNeeded = Object.keys(aggregatedRaw);
+  
+  // Phase 2: Greedy Planetary Selection
   let remainingResources = [...rawResourcesNeeded];
   const recommendedPlanets: PlanetStrategy[] = [];
 
@@ -73,6 +76,7 @@ export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionA
     }
   }
 
+  // Phase 3: Assembly Hub Determination
   const assemblyHubStrategy = recommendedPlanets.reduce((prev, current) => 
     (current.resourcesFound.length > prev.resourcesFound.length) ? current : prev
   );
@@ -80,8 +84,10 @@ export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionA
   const hubName = assemblyHubStrategy.planetName;
   const hubSystem = assemblyHubStrategy.system;
 
+  // Phase 4: Manufacturing and Link Generation
   const manufacturingNodes: ManufacturingSite[] = [];
   const intermediateItems = CONSTRUCTIBLE_ITEMS.filter(item => !itemNames.includes(item.name));
+  let interSystemLinkCount = 0;
 
   recommendedPlanets.forEach(strat => {
     const planetData = PLANETS.find(p => p.name === strat.planetName);
@@ -95,12 +101,12 @@ export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionA
       }
     });
 
-    // Generate Links to Hub
     if (!strat.isAssemblyHub && strat.planetName !== "GalBank / Trade Authority") {
       const linkType = strat.system === hubSystem ? 'Local' : 'Inter-System';
+      if (linkType === 'Inter-System') interSystemLinkCount++;
+      
       const cargo = [...strat.resourcesFound, ...(strat.manufacturedItems || [])];
       
-      // Outgoing from source
       strat.links.push({
         target: hubName,
         type: linkType,
@@ -109,7 +115,6 @@ export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionA
       });
       strat.linkCount++;
 
-      // Incoming to hub
       assemblyHubStrategy.links.push({
         target: strat.planetName,
         type: linkType,
@@ -120,6 +125,45 @@ export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionA
     }
   });
 
+  // Phase 5: Helium-3 Logistics Integration
+  // In Starfield, each Inter-System Cargo Link consumes 5 He-3 per "cycle"
+  if (interSystemLinkCount > 0) {
+    const he3Required = interSystemLinkCount * 5;
+    aggregatedRaw["Helium-3"] = (aggregatedRaw["Helium-3"] || 0) + he3Required;
+    
+    // Check if any recommended planet provides Helium-3
+    const hasHe3InNetwork = recommendedPlanets.some(p => p.resourcesFound.includes("Helium-3"));
+    
+    if (!hasHe3InNetwork) {
+      // Find a planet that has Helium-3 to add to the network
+      const he3Planet = PLANETS.find(p => p.resources.includes("Helium-3"));
+      if (he3Planet) {
+        recommendedPlanets.push({
+          planetName: he3Planet.name,
+          system: he3Planet.system,
+          resourcesFound: ["Helium-3"],
+          notes: "Essential Helium-3 source for Inter-System transit.",
+          links: [{
+            target: hubName,
+            type: he3Planet.system === hubSystem ? 'Local' : 'Inter-System',
+            cargo: ["Helium-3"],
+            direction: 'Outgoing'
+          }],
+          linkCount: 1
+        });
+        assemblyHubStrategy.links.push({
+          target: he3Planet.name,
+          type: he3Planet.system === hubSystem ? 'Local' : 'Inter-System',
+          cargo: ["Helium-3"],
+          direction: 'Incoming'
+        });
+        assemblyHubStrategy.linkCount++;
+      } else {
+        aggregatedRaw["Helium-3"] = (aggregatedRaw["Helium-3"] || 0) + he3Required;
+      }
+    }
+  }
+
   const efficiencyScore = Math.max(5, 100 - (recommendedPlanets.length * 8) - (assemblyHubStrategy.linkCount > 3 ? 15 : 0));
 
   return {
@@ -129,6 +173,6 @@ export const getLocalConstructionStrategy = (itemNames: string[]): ConstructionA
     manufacturingNodes,
     primaryAssemblyHub: hubName,
     efficiencyScore: Math.min(100, efficiencyScore),
-    logisticalSummary: `Primary Hub: ${hubName}. Total Network Links: ${recommendedPlanets.reduce((acc, p) => acc + p.linkCount, 0) / 2}. ${assemblyHubStrategy.linkCount > 3 ? "WARNING: Hub exceeds base cargo link limit (3)." : "Hub is within standard logistical parameters."}`
+    logisticalSummary: `Primary Hub: ${hubName}. ${interSystemLinkCount} Inter-System link(s) established, requiring Helium-3 fuel. ${assemblyHubStrategy.linkCount > 3 ? "WARNING: Hub exceeds base cargo link limit (3)." : "Logistical load is nominal."}`
   };
 };

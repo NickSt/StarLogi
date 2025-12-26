@@ -1,10 +1,12 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { getLocalConstructionStrategy } from './services/localOptimizer';
 import { ConstructionAnalysis } from './types';
 import { PlanetCard } from './components/PlanetCard';
 import { ResourceBadge } from './components/ResourceBadge';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { NetworkGraph } from './components/NetworkGraph';
+import { RecipePreview } from './components/RecipePreview';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip } from 'recharts';
 import { CONSTRUCTIBLE_ITEMS } from './data/gameData';
 
 const App: React.FC = () => {
@@ -13,6 +15,13 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<ConstructionAnalysis | null>(null);
+  
+  // Hover Preview State
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPos, setPreviewPos] = useState({ x: 0, y: 0 });
+  const hoverTimer = useRef<number | null>(null);
+  const leaveTimer = useRef<number | null>(null);
 
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) return CONSTRUCTIBLE_ITEMS;
@@ -28,6 +37,45 @@ const App: React.FC = () => {
         : [...prev, itemName]
     );
     if (analysis) setAnalysis(null);
+  };
+
+  const handleMouseEnter = (itemName: string, e: React.MouseEvent) => {
+    if (leaveTimer.current) {
+      clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    
+    // If it's a new item, update the target
+    if (hoveredItem !== itemName) {
+      setHoveredItem(itemName);
+      const rect = e.currentTarget.getBoundingClientRect();
+      setPreviewPos({ x: rect.left, y: rect.bottom + window.scrollY });
+      
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      hoverTimer.current = window.setTimeout(() => {
+        setShowPreview(true);
+      }, 500); // 500ms delay to show
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    
+    // Start a grace period to allow moving mouse to the preview
+    leaveTimer.current = window.setTimeout(() => {
+      setShowPreview(false);
+      setHoveredItem(null);
+    }, 200); 
+  };
+
+  const handlePreviewMouseEnter = () => {
+    if (leaveTimer.current) {
+      clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
   };
 
   const runOptimization = useCallback(() => {
@@ -71,13 +119,29 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-20 px-4 md:px-8">
+      {/* Blueprint Preview Portal-like Overlay */}
+      {showPreview && hoveredItem && (
+        <div 
+          className="fixed z-[100] transition-opacity duration-300"
+          onMouseEnter={handlePreviewMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{ 
+            left: `${previewPos.x}px`, 
+            top: `${previewPos.y + 4}px`, // Slight overlap to prevent gaps
+            maxWidth: 'calc(100vw - 40px)'
+          }}
+        >
+          <RecipePreview itemName={hoveredItem} />
+        </div>
+      )}
+
       {/* Header */}
       <header className="max-w-6xl mx-auto pt-12 pb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 mb-10">
         <div className="cursor-pointer" onClick={() => { setAnalysis(null); setSelectedItems([]); setSearchTerm(''); }}>
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-2">
             OUTPOST<span className="text-sky-500 italic">OPTIMIZER</span>
           </h1>
-          <p className="text-slate-400 font-mono text-sm uppercase">Advanced Logistics v6.0</p>
+          <p className="text-slate-400 font-mono text-sm uppercase">Advanced Logistics v7.0</p>
         </div>
         
         <div className="flex flex-col md:items-end gap-3 w-full md:w-auto">
@@ -139,6 +203,8 @@ const App: React.FC = () => {
                   <button
                     key={item.name}
                     onClick={() => toggleItemSelection(item.name)}
+                    onMouseEnter={(e) => handleMouseEnter(item.name, e)}
+                    onMouseLeave={handleMouseLeave}
                     className={`glass-panel text-left p-5 rounded-xl border transition-all group relative overflow-hidden ${
                       isSelected ? 'border-sky-500 bg-sky-500/5 ring-1 ring-sky-500/50' : 'hover:border-slate-500 border-transparent'
                     }`}
@@ -147,6 +213,13 @@ const App: React.FC = () => {
                       {item.name}
                     </h3>
                     <p className="text-[10px] text-slate-500 uppercase tracking-tighter">View sub-components &raquo;</p>
+                    
+                    {/* Hover indicator */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-3 h-3 text-sky-500/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
                   </button>
                 );
               })}
@@ -219,6 +292,11 @@ const App: React.FC = () => {
 
             {/* Right Side: Maps & Resources */}
             <div className="lg:col-span-2 space-y-8">
+              {/* Network Graph Visualization */}
+              <section className="animate-in fade-in zoom-in-95 duration-700 delay-100">
+                <NetworkGraph analysis={analysis} />
+              </section>
+
               <section>
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Recommended Resource Network</h2>
@@ -258,7 +336,7 @@ const App: React.FC = () => {
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '12px' }} />
+                          <ChartTooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '12px' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -290,7 +368,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full glass-panel py-3 px-8 flex justify-between items-center z-50 border-t border-sky-500/10">
         <div className="text-[9px] font-mono text-slate-600 uppercase tracking-[0.2em]">
-          Constellation Logistics Interface // Local Cache V6.0
+          Constellation Logistics Interface // Local Cache V7.0
         </div>
       </footer>
     </div>
