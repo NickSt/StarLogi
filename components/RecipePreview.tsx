@@ -1,106 +1,80 @@
 
-import React, { useMemo } from 'react';
-import { CONSTRUCTIBLE_ITEMS, ItemData } from '../data/gameData';
+import React from 'react';
+import { CONSTRUCTIBLE_ITEMS } from '../data/gameData';
 
 interface RecipePreviewProps {
   itemName: string;
+  compact?: boolean;
 }
 
-interface TreeNode {
-  name: string;
-  amount: string;
-  children: TreeNode[];
-  isRaw: boolean;
-}
+const TreeNode: React.FC<{ name: string; amount: string; depth: number; isLast: boolean }> = ({ name, amount, depth, isLast }) => {
+  const item = CONSTRUCTIBLE_ITEMS.find(i => i.name.toLowerCase() === name.toLowerCase());
+  const hasChildren = !!item;
 
-export const RecipePreview: React.FC<RecipePreviewProps> = ({ itemName }) => {
-  const buildTree = (name: string, amount: string = "1"): TreeNode => {
-    const item = CONSTRUCTIBLE_ITEMS.find(i => i.name.toLowerCase() === name.toLowerCase());
-    if (!item) {
-      return { name, amount, children: [], isRaw: true };
-    }
-    return {
-      name,
-      amount,
-      isRaw: false,
-      children: item.requirements.map(req => buildTree(req.name, req.amount))
-    };
-  };
-
-  const getRawTotals = (node: TreeNode, multiplier: number = 1): Record<string, number> => {
-    const totals: Record<string, number> = {};
-    const currentAmount = parseInt(node.amount) * multiplier;
-    
-    if (node.isRaw) {
-      totals[node.name] = currentAmount;
-    } else {
-      node.children.forEach(child => {
-        const subTotals = getRawTotals(child, currentAmount);
-        Object.entries(subTotals).forEach(([name, count]) => {
-          totals[name] = (totals[name] || 0) + count;
-        });
-      });
-    }
-    return totals;
-  };
-
-  const tree = useMemo(() => buildTree(itemName), [itemName]);
-  const rawTotals = useMemo(() => getRawTotals(tree), [tree]);
-
-  const renderNode = (node: TreeNode, depth: number = 0) => (
-    <div key={`${node.name}-${depth}`} className="flex flex-col ml-4 relative">
-      <div className="flex items-center group/node">
-        {depth > 0 && (
-          <div className="absolute -left-3 top-1/2 w-3 h-[1px] bg-slate-700"></div>
-        )}
-        <div className={`text-[10px] font-mono py-0.5 px-2 rounded border mb-1 flex justify-between items-center min-w-[140px] transition-colors ${
-          node.isRaw 
-            ? 'bg-slate-900/80 border-slate-700 text-slate-400' 
-            : 'bg-sky-500/10 border-sky-500/30 text-sky-400'
-        }`}>
-          <span className="truncate max-w-[100px]">{node.name}</span>
-          <span className="ml-2 font-black">x{node.amount}</span>
-        </div>
+  return (
+    <div className="relative ml-4 mt-2">
+      {/* Connector lines */}
+      <div className="tree-line-v" style={{ display: isLast && !hasChildren ? 'none' : 'block' }}></div>
+      <div className="tree-line-h"></div>
+      
+      <div className="flex justify-between items-center text-[10px]">
+        <span className={`${hasChildren ? 'text-sky-300 font-bold' : 'text-slate-400 font-medium'}`}>
+          {name}
+        </span>
+        <span className="text-sky-500/80 font-mono ml-2">x{amount}</span>
       </div>
-      {node.children.length > 0 && (
-        <div className="border-l border-slate-700 ml-1">
-          {node.children.map(child => renderNode(child, depth + 1))}
+
+      {hasChildren && (
+        <div className="mt-1">
+          {item.requirements.map((req, idx) => (
+            <TreeNode 
+              key={`${req.name}-${idx}`}
+              name={req.name} 
+              amount={req.amount} 
+              depth={depth + 1}
+              isLast={idx === item.requirements.length - 1}
+            />
+          ))}
         </div>
       )}
     </div>
   );
+};
+
+export const RecipePreview: React.FC<RecipePreviewProps> = ({ itemName, compact }) => {
+  const item = CONSTRUCTIBLE_ITEMS.find(i => i.name === itemName);
+  if (!item) return <span className="text-[9px] text-slate-600 font-mono italic uppercase">Raw Resource</span>;
+
+  if (compact) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {item.requirements.slice(0, 3).map(req => (
+          <span key={req.name} className="text-[8px] bg-slate-900/60 text-slate-400 px-1.5 py-0.5 rounded border border-white/5">
+            {req.name}
+          </span>
+        ))}
+        {item.requirements.length > 3 && (
+          <span className="text-[8px] text-slate-600 font-bold px-1">+ {item.requirements.length - 3} more</span>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-slate-950/95 border border-sky-500/40 rounded-lg p-4 shadow-[0_0_30px_rgba(0,0,0,0.8)] backdrop-blur-xl w-[320px] animate-in fade-in zoom-in-95 duration-200">
-      <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
-        <h4 className="text-[10px] font-black text-sky-500 uppercase tracking-widest">Blueprint Specification</h4>
-        <div className="flex gap-1">
-          <div className="w-1 h-1 bg-sky-500 rounded-full animate-pulse"></div>
-          <div className="w-1 h-1 bg-sky-500/50 rounded-full"></div>
-        </div>
+    <div className="space-y-3 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <h4 className="text-[9px] font-black text-sky-500 uppercase tracking-[0.15em]">Recursive Blueprint</h4>
       </div>
-
-      <div className="mb-6">
-        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-2">Recipe Hierarchy</p>
-        <div className="-ml-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-          {renderNode(tree)}
-        </div>
-      </div>
-
-      <div>
-        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-2">Consolidated Raw Materials</p>
-        <div className="grid grid-cols-2 gap-1">
-          {Object.entries(rawTotals).map(([name, amount]) => (
-            <div key={name} className="flex justify-between items-center text-[9px] bg-slate-900/50 p-1.5 rounded border border-slate-800/50">
-              <span className="text-slate-300 truncate mr-1">{name}</span>
-              <span className="text-sky-400 font-black">x{amount}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 flex justify-center">
-        <div className="text-[8px] text-slate-600 font-mono italic">SCANNING COMPLETED // NAV-COMPUTER SYNC ACTIVE</div>
+      <div className="pl-2 pb-2">
+        {item.requirements.map((req, idx) => (
+          <TreeNode 
+            key={`${req.name}-${idx}`}
+            name={req.name} 
+            amount={req.amount} 
+            depth={0}
+            isLast={idx === item.requirements.length - 1}
+          />
+        ))}
       </div>
     </div>
   );

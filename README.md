@@ -1,20 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
-# Run and deploy your AI Studio app
+# Starfield Outpost Optimizer
 
-This contains everything you need to run your app locally.
+A professional-grade logistical tool for Starfield explorers. Calculate the minimum number of outposts needed to manufacture complex components like Aldumite Drilling Rigs or Vytinium Fuel Rods.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1fszTZZGDHNXMyiMGyuxtKYg-3g1VOcXO
+## Core Capabilities
 
-## Run Locally
+- **Recursive Blueprint Analysis**: Automatically breaks down Tier 4 items into raw extracted resources.
+- **Planetary Network Optimization**: Greedy algorithm identifies the most efficient set of planets to cover all resource requirements.
+- **Logistics Visualization**: Generates a system topology map showing Local and Inter-System Cargo Link requirements.
+- **Helium-3 Calculation**: Factors in fuel costs for long-distance transport.
+- **Blueprint Previews**: Hover over any item to see its full manufacturing hierarchy.
 
-**Prerequisites:**  Node.js
+## Technical Stack
 
+- **React 19**: Modern UI framework.
+- **Tailwind CSS**: High-performance utility styling.
+- **Recharts**: Logistical data visualization.
+- **TypeScript**: Type-safe resource and recipe definitions.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Usage
+
+1. Select the items you wish to construct from the database.
+2. Click **Run Logistics**.
+3. Review the recommended planetary network and Cargo Link configuration.
