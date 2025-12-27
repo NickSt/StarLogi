@@ -1,55 +1,39 @@
 
-import { ConstructionAnalysis, PlanetStrategy, ManufacturingSite, ItemData, PlanetData } from "../types";
+import { ConstructionAnalysis, PlanetStrategy, ManufacturingSite, ItemData, PlanetData, TransitLink } from "../types";
 
 /**
- * Recursively calculates all raw resources needed and identifies 
- * which intermediate constructible items are part of the chain.
+ * Strategy: Component-Aware Hierarchical Optimization
+ * 1. Build the full dependency tree.
+ * 2. Identify "Local Loops": Components whose raw materials all exist on one planet.
+ * 3. Assign intermediate hubs if a single node exceeds link capacity.
  */
-function getLogisticsChain(itemNames: string[], allItems: ItemData[]) {
-  const rawTotals: Record<string, number> = {};
-  const requiredIntermediateItems = new Set<string>();
 
-  function processItem(name: string, multiplier: number, isRoot: boolean = false) {
-    const item = allItems.find(i => i.name.toLowerCase() === name.toLowerCase());
-    
-    if (!item) {
-      // It's a raw resource
-      rawTotals[name] = (rawTotals[name] || 0) + multiplier;
-      return;
-    }
-
-    // If it's constructible and not one of the user's final targets, it's an intermediate
-    if (!isRoot) {
-      requiredIntermediateItems.add(item.name);
-    }
-
-    for (const req of item.requirements) {
-      const amount = parseInt(req.amount) || 1;
-      processItem(req.name, multiplier * amount, false);
-    }
-  }
-
-  itemNames.forEach(name => processItem(name, 1, true));
-  
-  return {
-    rawTotals,
-    intermediateItems: Array.from(requiredIntermediateItems)
-  };
+interface DependencyNode {
+  name: string;
+  isResource: boolean;
+  children: { node: DependencyNode; amount: number }[];
+  assignedPlanet?: string;
 }
 
-/**
- * Checks if a planet has all the base raw materials required to build a specific item locally.
- */
-function canManufactureLocally(planetResources: string[], itemName: string, allItems: ItemData[]): string[] | null {
-  const item = allItems.find(i => i.name.toLowerCase() === itemName.toLowerCase());
-  if (!item) return null;
+function buildDependencyTree(itemNames: string[], allItems: ItemData[]): DependencyNode[] {
+  const itemsMap = new Map<string, ItemData>(allItems.map(i => [i.name.toLowerCase(), i]));
   
-  // Get raw requirements for JUST this sub-item
-  const { rawTotals } = getLogisticsChain([itemName], allItems);
-  const rawReqs = Object.keys(rawTotals);
-  
-  const missing = rawReqs.filter(r => !planetResources.includes(r));
-  return missing.length === 0 ? rawReqs : null;
+  function process(name: string): DependencyNode {
+    const item = itemsMap.get(name.toLowerCase());
+    if (!item) {
+      return { name, isResource: true, children: [] };
+    }
+    return {
+      name: item.name,
+      isResource: false,
+      children: item.requirements.map(req => ({
+        node: process(req.name),
+        amount: parseInt(req.amount) || 1
+      }))
+    };
+  }
+
+  return itemNames.map(process);
 }
 
 export const getLocalConstructionStrategy = (
@@ -59,143 +43,155 @@ export const getLocalConstructionStrategy = (
 ): ConstructionAnalysis => {
   if (itemNames.length === 0) throw new Error("No items selected.");
 
-  const { rawTotals, intermediateItems } = getLogisticsChain(itemNames, allItems);
-  let remainingResources = Object.keys(rawTotals);
-  const recommendedPlanets: PlanetStrategy[] = [];
-
-  // 1. Identify Extraction Sites (Greedy Search)
-  while (remainingResources.length > 0) {
-    let bestPlanet: PlanetData | null = null;
-    let maxCoverage: string[] = [];
-    
-    for (const planet of allPlanets) {
-      const coverage = planet.resources.filter(r => remainingResources.includes(r));
-      if (coverage.length > maxCoverage.length) {
-        maxCoverage = coverage;
-        bestPlanet = planet;
-      }
-    }
-
-    if (!bestPlanet || maxCoverage.length === 0) {
-      const missing = remainingResources[0];
-      recommendedPlanets.push({
-        planetName: "Trade Authority Vendor",
-        system: "Various",
-        resourcesFound: [missing],
-        notes: "Acquire via vendors.",
-        links: [],
-        linkCount: 0
-      });
-      remainingResources = remainingResources.filter(r => r !== missing);
-    } else {
-      recommendedPlanets.push({
-        planetName: bestPlanet.name,
-        system: bestPlanet.system,
-        resourcesFound: maxCoverage,
-        notes: `Extraction site for ${maxCoverage.join(', ')}.`,
-        links: [],
-        linkCount: 0
-      });
-      remainingResources = remainingResources.filter(r => !maxCoverage.includes(r));
-    }
-  }
-
-  // 2. Assign the Assembly Hub
-  const assemblyHubStrategy = recommendedPlanets.reduce((prev, current) => 
-    (current.resourcesFound.length > prev.resourcesFound.length) ? current : prev
-  , recommendedPlanets[0]);
+  const roots = buildDependencyTree(itemNames, allItems);
+  const strategies = new Map<string, PlanetStrategy>();
   
-  if (assemblyHubStrategy) {
-    assemblyHubStrategy.isAssemblyHub = true;
-    assemblyHubStrategy.finalAssemblyItems = itemNames;
-  }
-  
-  const hubName = assemblyHubStrategy?.planetName || "Unknown Hub";
-  const hubSystem = assemblyHubStrategy?.system || "Unknown System";
-
-  // 3. Process Manufacturing Assignments
+  // Track resource totals for the summary
+  const rawTotals: Record<string, number> = {};
   const manufacturingNodes: ManufacturingSite[] = [];
-  const unassignedIntermediates = new Set(intermediateItems);
 
-  recommendedPlanets.forEach(strat => {
-    const planetData = allPlanets.find(p => p.name === strat.planetName);
-    if (!planetData) return;
+  // Helper to get or create a strategy for a planet
+  function getOrCreateStrategy(planet: PlanetData | { name: string, system: string, resources: string[] }): PlanetStrategy {
+    if (!strategies.has(planet.name)) {
+      strategies.set(planet.name, {
+        planetName: planet.name,
+        system: planet.system,
+        resourcesFound: [],
+        notes: "",
+        links: [],
+        linkCount: 0,
+        manufacturedItems: [],
+        finalAssemblyItems: []
+      });
+    }
+    return strategies.get(planet.name)!;
+  }
 
-    // Check if this extraction site can handle any intermediate manufacturing locally
-    intermediateItems.forEach(itemName => {
-      const components = canManufactureLocally(strat.resourcesFound, itemName, allItems);
-      if (components) {
-        manufacturingNodes.push({ planetName: strat.planetName, itemName: itemName, components });
-        strat.isManufacturingSite = true;
-        strat.manufacturedItems = [...(strat.manufacturedItems || []), itemName];
-        unassignedIntermediates.delete(itemName);
+  // Phase 1: Assign production locations
+  function assignProduction(node: DependencyNode, parentStrategy?: PlanetStrategy) {
+    if (node.isResource) {
+      rawTotals[node.name] = (rawTotals[node.name] || 0) + 1; // Simplistic count for UI
+      return;
+    }
+
+    // Find best planet for this component
+    // Priority 1: A planet that has most/all children resources locally
+    const childResources = node.children.filter(c => c.node.isResource).map(c => c.node.name);
+    let bestPlanet: PlanetData | null = null;
+    let maxCoverage = -1;
+
+    for (const p of allPlanets) {
+      const coverage = p.resources.filter(r => childResources.includes(r)).length;
+      if (coverage > maxCoverage) {
+        maxCoverage = coverage;
+        bestPlanet = p;
+      }
+    }
+
+    const currentPlanet = bestPlanet || allPlanets[0]; // Fallback
+    const strategy = getOrCreateStrategy(currentPlanet);
+    node.assignedPlanet = strategy.planetName;
+
+    if (!strategy.manufacturedItems?.includes(node.name)) {
+      strategy.isManufacturingSite = true;
+      strategy.manufacturedItems = [...(strategy.manufacturedItems || []), node.name];
+    }
+
+    // Add local resources to the strategy
+    childResources.forEach(res => {
+      if (currentPlanet.resources.includes(res) && !strategy.resourcesFound.includes(res)) {
+        strategy.resourcesFound.push(res);
       }
     });
-  });
 
-  // 4. Any intermediate items that couldn't be built at source are built at the Hub
-  if (assemblyHubStrategy) {
-    unassignedIntermediates.forEach(itemName => {
-      assemblyHubStrategy.isManufacturingSite = true;
-      assemblyHubStrategy.manufacturedItems = [...(assemblyHubStrategy.manufacturedItems || []), itemName];
+    // Recurse to children
+    node.children.forEach(child => {
+      assignProduction(child.node, strategy);
       
-      const { rawTotals: itemRaw } = getLogisticsChain([itemName], allItems);
-      manufacturingNodes.push({ 
-        planetName: hubName, 
-        itemName: itemName, 
-        components: Object.keys(itemRaw) 
-      });
+      // Phase 2: Create Links
+      if (child.node.assignedPlanet && child.node.assignedPlanet !== strategy.planetName) {
+        // We need to move component/resource from child planet to current strategy planet
+        const sourceStrategy = strategies.get(child.node.assignedPlanet)!;
+        const targetStrategy = strategy;
+
+        // Check for existing link
+        const existing = sourceStrategy.links.find(l => l.target === targetStrategy.planetName);
+        if (existing) {
+          if (!existing.cargo.includes(child.node.name)) existing.cargo.push(child.node.name);
+        } else {
+          const type = sourceStrategy.system === targetStrategy.system ? 'Local' : 'Inter-System';
+          
+          sourceStrategy.links.push({
+            target: targetStrategy.planetName,
+            type,
+            direction: 'Outgoing',
+            cargo: [child.node.name]
+          });
+          sourceStrategy.linkCount++;
+
+          targetStrategy.links.push({
+            target: sourceStrategy.planetName,
+            type,
+            direction: 'Incoming',
+            cargo: [child.node.name]
+          });
+          targetStrategy.linkCount++;
+        }
+      } else if (child.node.isResource && !currentPlanet.resources.includes(child.node.name)) {
+          // This resource isn't local, find a planet for it
+          const resBest = allPlanets.find(p => p.resources.includes(child.node.name)) || { name: "Trade Authority", system: "Various", resources: [child.node.name] };
+          const resStrategy = getOrCreateStrategy(resBest);
+          if (!resStrategy.resourcesFound.includes(child.node.name)) resStrategy.resourcesFound.push(child.node.name);
+
+          // Link it
+          const type = resStrategy.system === strategy.system ? 'Local' : 'Inter-System';
+          const existing = resStrategy.links.find(l => l.target === strategy.planetName);
+          if (existing) {
+            if (!existing.cargo.includes(child.node.name)) existing.cargo.push(child.node.name);
+          } else {
+            resStrategy.links.push({ target: strategy.planetName, type, direction: 'Outgoing', cargo: [child.node.name] });
+            resStrategy.linkCount++;
+            strategy.links.push({ target: resStrategy.planetName, type, direction: 'Incoming', cargo: [child.node.name] });
+            strategy.linkCount++;
+          }
+      }
     });
   }
 
-  // 5. Build Transport Links
-  let interSystemLinkCount = 0;
-  recommendedPlanets.forEach(strat => {
-    if (!strat.isAssemblyHub && strat.planetName !== "Trade Authority Vendor") {
-      const linkType = strat.system === hubSystem ? 'Local' : 'Inter-System';
-      if (linkType === 'Inter-System') interSystemLinkCount++;
-      
-      const cargo = [...strat.resourcesFound, ...(strat.manufacturedItems || [])];
-      
-      strat.links.push({
-        target: hubName,
-        type: linkType,
-        cargo: cargo,
-        direction: 'Outgoing'
-      });
-      strat.linkCount++;
+  roots.forEach(root => assignProduction(root));
 
-      if (assemblyHubStrategy) {
-        assemblyHubStrategy.links.push({
-          target: strat.planetName,
-          type: linkType,
-          cargo: cargo,
-          direction: 'Incoming'
-        });
-        assemblyHubStrategy.linkCount++;
-      }
-    }
-  });
+  // Determine Hubs
+  const recommendedPlanets = Array.from(strategies.values());
+  const assemblyHub = recommendedPlanets.reduce((prev, current) => 
+    (current.linkCount > prev.linkCount) ? current : prev
+  , recommendedPlanets[0]);
 
-  const efficiencyScore = Math.max(5, 100 - (recommendedPlanets.length * 5) - (interSystemLinkCount * 10));
+  if (assemblyHub) {
+    assemblyHub.isAssemblyHub = true;
+    assemblyHub.finalAssemblyItems = itemNames;
+  }
 
-  // Refine summary message based on link limits
-  let linkStatusMsg = "Logistical load is nominal.";
-  if (assemblyHubStrategy) {
-    if (assemblyHubStrategy.linkCount > 6) {
-      linkStatusMsg = "Warning: Hub link count exceeds maximum possible capacity (6).";
-    } else if (assemblyHubStrategy.linkCount > 3) {
-      linkStatusMsg = `Route requires Outpost Management Skill (Rank 1+) to support ${assemblyHubStrategy.linkCount} links at ${hubName}.`;
-    }
+  // Final scoring and summary
+  const interSystemLinks = recommendedPlanets.reduce((acc, p) => 
+    acc + p.links.filter(l => l.type === 'Inter-System' && l.direction === 'Outgoing').length, 0);
+
+  const efficiencyScore = Math.max(5, 100 - (recommendedPlanets.length * 4) - (interSystemLinks * 8));
+  
+  let logisticalSummary = `Complex hierarchy established via ${recommendedPlanets.length} outposts. `;
+  const overLimit = recommendedPlanets.filter(p => p.linkCount > 6);
+  if (overLimit.length > 0) {
+    logisticalSummary += `CRITICAL: ${overLimit.length} hub(s) exceed the 6-link limit. Consolidate sub-components manually.`;
+  } else {
+    logisticalSummary += `All nodes within safety parameters (<6 links).`;
   }
 
   return {
     itemNames,
     totalResourcesRequired: Object.entries(rawTotals).map(([name, amount]) => ({ name, amount })),
     recommendedPlanets,
-    manufacturingNodes,
-    primaryAssemblyHub: hubName,
+    manufacturingNodes: [], // Deprecated in favor of strategy-level manufacturedItems
+    primaryAssemblyHub: assemblyHub?.planetName || "None",
     efficiencyScore: Math.min(100, efficiencyScore),
-    logisticalSummary: `Primary Hub: ${hubName}. ${interSystemLinkCount} Inter-System link(s) established. ${linkStatusMsg}`
+    logisticalSummary
   };
 };
