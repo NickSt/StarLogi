@@ -8,7 +8,10 @@
       "script": "dev",
       "isBackground": true,
       "problemMatcher": {
-        "owner": "typescript",
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
         "background": {
           "activeOnStart": true,
           "beginsPattern": "VITE",
