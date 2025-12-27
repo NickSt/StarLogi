@@ -1,4 +1,3 @@
-
 import { ItemData, PlanetData } from "../types";
 
 /**
@@ -66,36 +65,24 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
 
   try {
     /**
-     * STRATEGY 1: Dynamic Import (Bundler Mode)
-     * When running 'npm build' or standard Vite, this signals the bundler 
-     * to include these JSON files in the JS bundle.
+     * Using relative paths without a leading slash is the most compatible way
+     * to ensure the browser resolves the 'data' directory relative to the current
+     * application path (e.g., both locally and on GitHub Pages sub-paths).
      */
-    const [gMod, rMod] = await Promise.all([
-      import("../data/galaxy.json"),
-      import("../data/recipes.json")
+    const [gRes, rRes] = await Promise.all([
+      fetch("data/galaxy.json"),
+      fetch("data/recipes.json")
     ]);
-    galaxyJson = gMod.default;
-    recipesJson = rMod.default;
-  } catch (err) {
-    /**
-     * STRATEGY 2: Fetch Fallback (AI Studio / Restricted Env Mode)
-     * If the module loader fails (common in AI Studio's internal preview),
-     * we treat the JSON files as static network assets.
-     */
-    try {
-      const [gRes, rRes] = await Promise.all([
-        fetch("./data/galaxy.json"),
-        fetch("./data/recipes.json")
-      ]);
 
-      if (!gRes.ok || !rRes.ok) throw new Error("Assets not found on network");
-      
-      galaxyJson = await gRes.json();
-      recipesJson = await rRes.json();
-    } catch (fetchErr: any) {
-      console.error("Database link failure:", fetchErr);
-      throw new Error(`Logistics database unreachable: ${fetchErr.message}`);
+    if (!gRes.ok || !rRes.ok) {
+      throw new Error(`Asset link failed: Galaxy Status ${gRes.status}, Recipes Status ${rRes.status}. Paths attempted: ${gRes.url}, ${rRes.url}`);
     }
+    
+    galaxyJson = await gRes.json();
+    recipesJson = await rRes.json();
+  } catch (err: any) {
+    console.error("Database connection failed:", err);
+    throw new Error(`Logistics link failure: Could not reach galactic data. ${err.message}`);
   }
 
   try {
@@ -103,7 +90,7 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     const planets: PlanetData[] = (galaxyJson as any[]).map((p: any) => ({
       name: p.name,
       system: p.system,
-      // Map symbols to names, otherwise keep the original name (for flora/fauna resources)
+      // Map symbols to names, otherwise keep original
       resources: (p.resources || []).map((res: string) => RESOURCE_MAPPING[res] || res)
     }));
 
@@ -120,7 +107,6 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
       })
     }));
 
-    // Filter out duplicates and sort
     const uniqueItems = Array.from(new Map(items.map(item => [item.name, item])).values())
       .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -129,7 +115,7 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
       planets: planets.sort((a, b) => a.name.localeCompare(b.name))
     };
   } catch (error: any) {
-    console.error("Data processing error:", error);
-    throw new Error(`Logistics database integrity check failed: ${error.message}`);
+    console.error("Data processing failure:", error);
+    throw new Error(`Corrupted galactic data: ${error.message}`);
   }
 }
