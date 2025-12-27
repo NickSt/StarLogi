@@ -1,19 +1,5 @@
 
-export interface ItemRequirement {
-  name: string;
-  amount: string;
-}
-
-export interface ItemData {
-  name: string;
-  requirements: ItemRequirement[];
-}
-
-export interface PlanetData {
-  name: string;
-  system: string;
-  resources: string[];
-}
+import { ItemData, PlanetData } from "../types";
 
 export const CONSTRUCTIBLE_ITEMS: ItemData[] = [
   {

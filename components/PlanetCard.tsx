@@ -40,6 +40,22 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, index }) => {
           </p>
         </div>
       </div>
+
+      {planet.isAssemblyHub && planet.finalAssemblyItems && (
+        <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-md animate-in fade-in zoom-in-95 duration-500">
+          <p className="text-[10px] text-amber-500 uppercase font-black mb-2 tracking-widest flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 2.318a1 1 0 01-.8 1.601H3.851a1 1 0 01-.8-1.601l1.738-2.318-1.233-.616a1 1 0 01.894-1.79l1.599.8L10 4.323V3a1 1 0 011-1zm-5 8v2h10v-2H5z" clipRule="evenodd"/></svg>
+            Final Assembly Targets
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {planet.finalAssemblyItems.map((item, i) => (
+              <span key={i} className="text-[10px] font-black text-white bg-slate-900 px-2 py-0.5 rounded border border-amber-500/30">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
@@ -106,8 +122,8 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, index }) => {
       {planet.isManufacturingSite && planet.manufacturedItems && (
         <div className="mt-4 p-3 bg-sky-500/5 border border-sky-500/10 rounded-md">
           <p className="text-[10px] text-sky-400 uppercase font-black mb-2 tracking-widest flex items-center">
-            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 2.318a1 1 0 01-.8 1.601H3.851a1 1 0 01-.8-1.601l1.738-2.318-1.233-.616a1 1 0 01.894-1.79l1.599.8L10 4.323V3a1 1 0 011-1zm-5 8v2h10v-2H5z" clipRule="evenodd"/></svg>
-            On-Site Production
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 2a2 2 0 00-2 2v1H3a1 1 0 000 2h2v2H3a1 1 0 000 2h2v2H3a1 1 0 000 2h2v1a2 2 0 002 2h1a1 1 0 002-2v-1h2v1a1 1 0 002 2h1a2 2 0 002-2v-1h2a1 1 0 000-2h-2v-2h2a1 1 0 000-2h-2V7h2a1 1 0 000-2h-2V4a2 2 0 00-2-2h-1a1 1 0 00-2 2v1H9V4a1 1 0 00-2-2H7zm0 5h2v2H7V7zm5 0h2v2h-2V7z" clipRule="evenodd"/></svg>
+            Intermediate Production
           </p>
           <div className="flex flex-wrap gap-2">
             {planet.manufacturedItems.map((item, i) => (

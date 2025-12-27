@@ -20,6 +20,7 @@ export interface PlanetStrategy {
   isManufacturingSite?: boolean;
   isAssemblyHub?: boolean;
   manufacturedItems?: string[];
+  finalAssemblyItems?: string[];
   links: TransitLink[];
   linkCount: number;
 }
@@ -38,4 +39,21 @@ export interface ConstructionAnalysis {
   primaryAssemblyHub: string;
   efficiencyScore: number;
   logisticalSummary: string;
+}
+
+// Data formats for the GitHub repo normalization
+export interface ItemRequirement {
+  name: string;
+  amount: string;
+}
+
+export interface ItemData {
+  name: string;
+  requirements: ItemRequirement[];
+}
+
+export interface PlanetData {
+  name: string;
+  system: string;
+  resources: string[];
 }
