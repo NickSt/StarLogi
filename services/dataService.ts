@@ -40,7 +40,7 @@ const RESOURCE_MAPPING: Record<string, string> = {
   "Eu": "Europium",
   "Ne": "Neon",
   "Hg": "Mercury",
-  "Cs": "Caesium",
+  "Cs": "Cesium",
   "Sb": "Antimony",
   "R-COOH": "Carboxylic Acids",
   "C6Hn": "Benzene",
@@ -54,11 +54,12 @@ const RESOURCE_MAPPING: Record<string, string> = {
 };
 
 /**
- * Common typo corrections for provided data files
+ * Common typo corrections or alternate spellings for provided data files
  */
 const TYPO_FIXES: Record<string, string> = {
   "Alluminum": "Aluminum",
-  "Tanalum": "Tantalum"
+  "Tanalum": "Tantalum",
+  "Caesium": "Cesium"
 };
 
 export async function fetchGalacticData(): Promise<{ items: ItemData[], planets: PlanetData[] }> {
@@ -97,4 +98,3 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     throw new Error("Logistics database connection interrupted. Ensure galaxy.json and recipes.json are correctly located in the src/data directory.");
   }
 }
-
