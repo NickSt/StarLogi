@@ -179,6 +179,16 @@ export const getLocalConstructionStrategy = (
 
   const efficiencyScore = Math.max(5, 100 - (recommendedPlanets.length * 5) - (interSystemLinkCount * 10));
 
+  // Refine summary message based on link limits
+  let linkStatusMsg = "Logistical load is nominal.";
+  if (assemblyHubStrategy) {
+    if (assemblyHubStrategy.linkCount > 6) {
+      linkStatusMsg = "Warning: Hub link count exceeds maximum possible capacity (6).";
+    } else if (assemblyHubStrategy.linkCount > 3) {
+      linkStatusMsg = `Route requires Outpost Management Skill (Rank 1+) to support ${assemblyHubStrategy.linkCount} links at ${hubName}.`;
+    }
+  }
+
   return {
     itemNames,
     totalResourcesRequired: Object.entries(rawTotals).map(([name, amount]) => ({ name, amount })),
@@ -186,6 +196,6 @@ export const getLocalConstructionStrategy = (
     manufacturingNodes,
     primaryAssemblyHub: hubName,
     efficiencyScore: Math.min(100, efficiencyScore),
-    logisticalSummary: `Primary Hub: ${hubName}. ${interSystemLinkCount} Inter-System link(s) established. ${assemblyHubStrategy && assemblyHubStrategy.linkCount > 3 ? "Hub exceeds base cargo link limit." : "Logistical load is nominal."}`
+    logisticalSummary: `Primary Hub: ${hubName}. ${interSystemLinkCount} Inter-System link(s) established. ${linkStatusMsg}`
   };
 };
