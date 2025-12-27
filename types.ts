@@ -8,8 +8,11 @@ export interface Resource {
 export interface TransitLink {
   target: string;
   type: 'Local' | 'Inter-System';
-  cargo: string[];
-  direction: 'Incoming' | 'Outgoing';
+  cargo: string[]; // Used for legacy/simple display
+  direction: 'Incoming' | 'Outgoing' | 'Bidirectional';
+  sentCargo?: string[]; // Used for bidirectional
+  receivedCargo?: string[]; // Used for bidirectional
+  isFueled?: boolean;
 }
 
 export interface PlanetStrategy {
@@ -23,6 +26,7 @@ export interface PlanetStrategy {
   finalAssemblyItems?: string[];
   links: TransitLink[];
   linkCount: number;
+  requiresHe3?: boolean;
 }
 
 export interface ManufacturingSite {
@@ -39,6 +43,9 @@ export interface ConstructionAnalysis {
   primaryAssemblyHub: string;
   efficiencyScore: number;
   logisticalSummary: string;
+  he3Required: boolean;
+  outpostLimitReached: boolean;
+  bidirectionalEnabled: boolean;
 }
 
 // Data formats for the GitHub repo normalization

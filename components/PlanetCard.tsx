@@ -4,116 +4,152 @@ import { PlanetStrategy } from '../types';
 import { ResourceBadge } from './ResourceBadge';
 
 interface PlanetCardProps {
-  planet: PlanetStrategy;
+  planetName: string;
+  system: string;
+  sites: PlanetStrategy[];
   index: number;
 }
 
-export const PlanetCard: React.FC<PlanetCardProps> = ({ planet, index }) => {
-  const isOverLimit = planet.linkCount > 3;
-  const isHardLimit = planet.linkCount > 6;
-  const isIntermediate = planet.manufacturedItems && planet.manufacturedItems.length > 0 && !planet.isAssemblyHub;
+export const PlanetCard: React.FC<PlanetCardProps> = ({ planetName, system, sites, index }) => {
+  const allResources = Array.from(new Set(sites.flatMap(s => s.resourcesFound)));
+  const isAssemblyPlanet = sites.some(s => s.isAssemblyHub);
 
   return (
-    <div className={`glass-panel rounded-lg p-5 nasa-accent hover:border-sky-500 transition-all duration-300 relative overflow-hidden ${
-      planet.isAssemblyHub ? 'border-amber-500/50 ring-2 ring-amber-500/20 shadow-[0_0_25px_rgba(245,158,11,0.1)]' : 
-      isIntermediate ? 'border-sky-400/50 ring-1 ring-sky-400/20' : ''
+    <div className={`glass-panel rounded-xl p-4 nasa-accent hover:border-sky-500/40 transition-all duration-300 relative overflow-hidden ${
+      isAssemblyPlanet ? 'border-amber-500/40 ring-1 ring-amber-500/10' : ''
     }`}>
-      {planet.isAssemblyHub && (
-        <div className="absolute -right-12 top-4 rotate-45 bg-amber-500 text-slate-950 text-[10px] font-black py-1 px-14 shadow-lg z-10">
-          COMMAND HUB
-        </div>
-      )}
-      
-      {isIntermediate && (
-        <div className="absolute -right-12 top-4 rotate-45 bg-sky-500 text-slate-950 text-[10px] font-black py-1 px-14 shadow-lg z-10">
-          FACTORY HUB
-        </div>
-      )}
-      
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-white flex items-center">
-            <span className={planet.isAssemblyHub ? "text-amber-500 mr-2" : "text-sky-500 mr-2"}>#{index + 1}</span>
-            {planet.planetName}
-          </h3>
-          <p className="text-sm text-slate-400 font-mono uppercase tracking-wider">
-            System: {planet.system}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 mb-6">
-        <div className="p-3 bg-slate-900/40 rounded border border-white/5">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Cargo Link Capacity</p>
-            <span className={`font-mono text-xs font-bold ${isHardLimit ? 'text-red-500 animate-pulse' : isOverLimit ? 'text-amber-400' : 'text-sky-400'}`}>
-              {planet.linkCount} / 6 USED
-            </span>
-          </div>
-          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-            <div 
-              className={`h-full transition-all ${isHardLimit ? 'bg-red-500' : isOverLimit ? 'bg-amber-400' : 'bg-sky-500'}`} 
-              style={{ width: `${Math.min(100, (planet.linkCount / 6) * 100)}%` }}
-            ></div>
-          </div>
-          {isHardLimit && (
-            <p className="text-[9px] text-red-500 mt-2 font-black uppercase tracking-tighter">
-              Capacity Exceeded! Must split route.
+      {/* Condensed Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-7 h-7 rounded bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-black shrink-0">
+            {index + 1}
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-base font-black text-white uppercase tracking-tight italic flex items-center gap-2 leading-none truncate">
+              {planetName}
+            </h3>
+            <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider mt-1 truncate">
+              {system} SYSTEM
             </p>
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+           {sites.some(s => s.requiresHe3) && (
+            <div className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[8px] font-black py-0.5 px-2 rounded tracking-tighter uppercase whitespace-nowrap animate-pulse">
+              Fuel Required
+            </div>
+          )}
+          {isAssemblyPlanet && (
+            <div className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[8px] font-black py-0.5 px-2 rounded tracking-tighter uppercase whitespace-nowrap">
+              Industrial Hub
+            </div>
           )}
         </div>
+      </div>
 
-        <div>
-          <p className="text-[10px] text-slate-500 mb-2 uppercase font-bold tracking-widest">Active Extraction</p>
-          <div className="flex flex-wrap">
-            {planet.resourcesFound.length > 0 ? (
-              planet.resourcesFound.map((res, idx) => <ResourceBadge key={idx} name={res} />)
-            ) : (
-              <span className="text-[10px] text-slate-600 italic">No local extraction required.</span>
-            )}
-          </div>
+      {/* Extraction Portfolio */}
+      <div className="mb-4">
+        <div className="flex flex-wrap gap-1">
+          {allResources.length > 0 ? (
+            allResources.map((res, idx) => (
+              <span key={idx} className="text-[9px] bg-slate-800/50 border border-white/5 text-slate-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-sky-500"></span>
+                {res}
+              </span>
+            ))
+          ) : (
+            <span className="text-[9px] text-slate-600 italic uppercase font-black tracking-widest opacity-40">Industrial Processing Only</span>
+          )}
         </div>
       </div>
 
-      {planet.manufacturedItems && planet.manufacturedItems.length > 0 && (
-        <div className="mb-4 p-3 bg-sky-500/5 border border-sky-500/10 rounded-md">
-          <p className="text-[10px] text-sky-400 uppercase font-black mb-2 tracking-widest">Local Manufacturing</p>
-          <div className="flex flex-wrap gap-2">
-            {planet.manufacturedItems.map((item, i) => (
-              <span key={i} className="text-[10px] font-black text-white bg-slate-900 px-2 py-0.5 rounded border border-sky-500/30">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="border-t border-slate-800 pt-4">
-        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Logistics Network</h4>
-        <div className="space-y-2">
-          {planet.links.length > 0 ? (
-            planet.links.map((link, i) => (
-              <div key={i} className="flex flex-col p-2 bg-slate-800/30 rounded border border-slate-700/50">
-                <div className="flex justify-between items-center mb-1">
-                  <span className={`text-[9px] font-black ${link.direction === 'Incoming' ? 'text-emerald-400' : 'text-sky-400'}`}>
-                    {link.direction === 'Incoming' ? '← INCOMING' : '→ OUTGOING'}
-                  </span>
-                  <span className={`text-[8px] px-1 py-0.5 rounded ${link.type === 'Inter-System' ? 'bg-amber-500/10 text-amber-500' : 'bg-sky-500/10 text-sky-500'}`}>
-                    {link.type.toUpperCase()}
-                  </span>
+      {/* Optimized Site Modules */}
+      <div className="space-y-3 relative">
+        {sites.map((site, sIdx) => (
+          <div key={sIdx} className={`rounded-lg border border-white/5 overflow-hidden flex flex-col ${site.isAssemblyHub ? 'bg-amber-500/5' : 'bg-slate-900/30'}`}>
+            
+            <div className="p-3 border-b border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                    site.isAssemblyHub ? 'bg-amber-500 text-slate-950' : 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                  }`}>
+                    {String.fromCharCode(65 + sIdx)}
+                  </div>
+                  <h4 className="text-[10px] font-black text-white uppercase">
+                    Outpost {String.fromCharCode(65 + sIdx)}
+                  </h4>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-white font-bold">{link.target}</span>
-                  <span className="text-[9px] text-slate-500 truncate max-w-[120px]">
-                    Cargo: {link.cargo.join(', ')}
+                <div className="flex items-center gap-2">
+                  <span className={`font-mono text-[9px] font-bold ${site.links.length >= 6 ? 'text-red-500 animate-pulse' : 'text-sky-400/60'}`}>
+                    {site.links.length}/6 SLOTS
                   </span>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-[10px] text-slate-600 italic">Disconnected Node.</p>
-          )}
-        </div>
+
+              {/* Manufacturing Tasks */}
+              {(site.manufacturedItems?.length || 0) > 0 || (site.finalAssemblyItems?.length || 0) > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {site.finalAssemblyItems?.map((item, idx) => (
+                    <div key={`f-${idx}`} className="text-[8px] font-black text-amber-400 uppercase flex items-center gap-1 bg-amber-500/5 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      <span className="w-1 h-1 bg-amber-500 rounded-sm"></span> {item}
+                    </div>
+                  ))}
+                  {site.manufacturedItems?.map((item, idx) => (
+                    <div key={`m-${idx}`} className="text-[8px] font-black text-sky-400 uppercase flex items-center gap-1 bg-sky-500/5 px-1.5 py-0.5 rounded border border-sky-500/20">
+                      <span className="w-1 h-1 bg-sky-500 rounded-sm"></span> {item}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Logistics Grid with Bandwidth Indicators */}
+            <div className="p-2 grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto custom-scrollbar bg-black/20">
+              {site.links.length > 0 ? (
+                site.links.map((link, lIdx) => {
+                  const isSaturated = link.cargo.length >= 3;
+                  const isOverloaded = link.cargo.length > 3;
+                  return (
+                    <div key={lIdx} className={`rounded p-1.5 border border-white/5 flex flex-col gap-0.5 bg-slate-950/50 transition-colors ${isOverloaded ? 'border-red-500/30' : ''}`}>
+                      <div className="flex justify-between items-center text-[7px] font-black uppercase tracking-tighter">
+                        <div className="flex gap-1.5 items-center">
+                           <span className={link.direction === 'Incoming' ? 'text-emerald-400' : 'text-sky-400'}>
+                              {link.direction === 'Incoming' ? '← RECEIVING' : '→ SENDING'}
+                            </span>
+                          <span className={`px-1 rounded-sm border ${
+                            isOverloaded ? 'bg-red-500/20 text-red-400 border-red-500/30' : 
+                            isSaturated ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
+                            'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                          }`}>
+                            {isOverloaded ? 'OVERLOAD' : 'LOAD'}: {link.cargo.length}/3
+                          </span>
+                        </div>
+                        <span className="opacity-30">{link.type}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-baseline gap-2">
+                        <span className="text-[9px] font-bold truncate shrink-0 max-w-[100px] text-white">
+                          {link.target}
+                        </span>
+                        <div className="flex gap-1.5 text-[8px] truncate overflow-hidden text-slate-400 font-mono italic">
+                           {link.cargo.join(' + ')}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="text-[8px] text-sky-400 uppercase font-black tracking-[0.2em] mb-1">Direct-to-Fabricator</div>
+                  <div className="text-[7px] text-slate-600 uppercase font-bold italic">Requirements sourced locally at site</div>
+                </div>
+              )}
+            </div>
+            {site.notes && <div className="p-2 text-[8px] bg-red-500/10 text-red-400 font-bold uppercase tracking-tight text-center">{site.notes}</div>}
+          </div>
+        ))}
       </div>
     </div>
   );
