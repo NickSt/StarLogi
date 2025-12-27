@@ -1,5 +1,7 @@
 
 import { ItemData, PlanetData } from "../types";
+import galaxyData from "../data/galaxy.json";
+import recipesData from "../data/recipes.json";
 
 /**
  * Symbol mapping to convert symbols in galaxy.json to full names used in recipes.json
@@ -61,33 +63,19 @@ const TYPO_FIXES: Record<string, string> = {
 
 export async function fetchGalacticData(): Promise<{ items: ItemData[], planets: PlanetData[] }> {
   try {
-    // Vite handles JSON imports or we can fetch them via the public path
-    const [galaxyResponse, recipesResponse] = await Promise.all([
-      fetch('./data/galaxy.json'),
-      fetch('./data/recipes.json')
-    ]);
-
-    if (!galaxyResponse.ok || !recipesResponse.ok) {
-      throw new Error("Failed to load local database files.");
-    }
-
-    const rawGalaxy = await galaxyResponse.json();
-    const rawRecipes = await recipesResponse.json();
-
-    // 1. Process Planets
-    const planets: PlanetData[] = rawGalaxy.map((p: any) => ({
+    // 1. Process Planets from imported galaxyData
+    const planets: PlanetData[] = (galaxyData as any[]).map((p: any) => ({
       name: p.name,
       system: p.system,
       // Map symbols to names, otherwise keep the original name (for flora/fauna resources)
       resources: (p.resources || []).map((res: string) => RESOURCE_MAPPING[res] || res)
     }));
 
-    // 2. Process Constructible Items
-    const items: ItemData[] = rawRecipes.map((r: any) => ({
+    // 2. Process Constructible Items from imported recipesData
+    const items: ItemData[] = (recipesData as any[]).map((r: any) => ({
       name: r.name,
       requirements: (r.requires || []).map((req: any) => {
         const rawName = req.name;
-        // Apply typo fixes (e.g. Alluminum -> Aluminum)
         const fixedName = TYPO_FIXES[rawName] || rawName;
         return {
           name: fixedName,
@@ -106,6 +94,7 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     };
   } catch (error: any) {
     console.error("Data processing error:", error);
-    throw new Error("Logistics database connection interrupted. Ensure galaxy.json and recipes.json are available.");
+    throw new Error("Logistics database connection interrupted. Ensure galaxy.json and recipes.json are correctly located in the src/data directory.");
   }
 }
+
