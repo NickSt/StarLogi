@@ -1,7 +1,5 @@
 
 import { ItemData, PlanetData } from "../types";
-import galaxyData from "../data/galaxy.json";
-import recipesData from "../data/recipes.json";
 
 /**
  * Symbol mapping to convert symbols in galaxy.json to full names used in recipes.json
@@ -63,17 +61,54 @@ const TYPO_FIXES: Record<string, string> = {
 };
 
 export async function fetchGalacticData(): Promise<{ items: ItemData[], planets: PlanetData[] }> {
+  let galaxyJson: any;
+  let recipesJson: any;
+
   try {
-    // 1. Process Planets from imported galaxyData
-    const planets: PlanetData[] = (galaxyData as any[]).map((p: any) => ({
+    /**
+     * STRATEGY 1: Dynamic Import (Bundler Mode)
+     * When running 'npm build' or standard Vite, this signals the bundler 
+     * to include these JSON files in the JS bundle.
+     */
+    const [gMod, rMod] = await Promise.all([
+      import("../data/galaxy.json"),
+      import("../data/recipes.json")
+    ]);
+    galaxyJson = gMod.default;
+    recipesJson = rMod.default;
+  } catch (err) {
+    /**
+     * STRATEGY 2: Fetch Fallback (AI Studio / Restricted Env Mode)
+     * If the module loader fails (common in AI Studio's internal preview),
+     * we treat the JSON files as static network assets.
+     */
+    try {
+      const [gRes, rRes] = await Promise.all([
+        fetch("./data/galaxy.json"),
+        fetch("./data/recipes.json")
+      ]);
+
+      if (!gRes.ok || !rRes.ok) throw new Error("Assets not found on network");
+      
+      galaxyJson = await gRes.json();
+      recipesJson = await rRes.json();
+    } catch (fetchErr: any) {
+      console.error("Database link failure:", fetchErr);
+      throw new Error(`Logistics database unreachable: ${fetchErr.message}`);
+    }
+  }
+
+  try {
+    // Process Planets
+    const planets: PlanetData[] = (galaxyJson as any[]).map((p: any) => ({
       name: p.name,
       system: p.system,
       // Map symbols to names, otherwise keep the original name (for flora/fauna resources)
       resources: (p.resources || []).map((res: string) => RESOURCE_MAPPING[res] || res)
     }));
 
-    // 2. Process Constructible Items from imported recipesData
-    const items: ItemData[] = (recipesData as any[]).map((r: any) => ({
+    // Process Constructible Items
+    const items: ItemData[] = (recipesJson as any[]).map((r: any) => ({
       name: r.name,
       requirements: (r.requires || []).map((req: any) => {
         const rawName = req.name;
@@ -95,6 +130,6 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     };
   } catch (error: any) {
     console.error("Data processing error:", error);
-    throw new Error("Logistics database connection interrupted. Ensure galaxy.json and recipes.json are correctly located in the src/data directory.");
+    throw new Error(`Logistics database integrity check failed: ${error.message}`);
   }
 }
