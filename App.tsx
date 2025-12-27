@@ -9,6 +9,7 @@ import { RecipePreview } from './components/RecipePreview';
 import { SearchView } from './components/SearchView';
 
 type ViewMode = 'optimizer' | 'search';
+type SortMode = 'tier' | 'alphabetical';
 
 const App: React.FC = () => {
   const [galacticData, setGalacticData] = useState<{ items: ItemData[], planets: PlanetData[] } | null>(null);
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewMode>('optimizer');
+  const [sortMode, setSortMode] = useState<SortMode>('tier');
 
   // Initialize data on mount
   useEffect(() => {
@@ -36,12 +38,57 @@ const App: React.FC = () => {
     init();
   }, []);
 
+  // Calculate manufacturing tiers (depth of the recipe tree)
+  const itemTiers = useMemo(() => {
+    if (!galacticData) return {};
+    const tiers: Record<string, number> = {};
+    const itemsMap = new Map(galacticData.items.map(i => [i.name.toLowerCase(), i]));
+
+    function calculateTier(name: string, visited = new Set<string>()): number {
+      const lowerName = name.toLowerCase();
+      if (tiers[lowerName]) return tiers[lowerName];
+      if (visited.has(lowerName)) return 1; // Prevent circularity
+
+      const item = itemsMap.get(lowerName);
+      if (!item) return 0; // It's a resource
+
+      visited.add(lowerName);
+      let maxSubTier = 0;
+      for (const req of item.requirements) {
+        maxSubTier = Math.max(maxSubTier, calculateTier(req.name, visited));
+      }
+      
+      const result = maxSubTier + 1;
+      tiers[lowerName] = result;
+      return result;
+    }
+
+    galacticData.items.forEach(item => calculateTier(item.name));
+    return tiers;
+  }, [galacticData]);
+
   const filteredItems = useMemo(() => {
     if (!galacticData) return [];
-    return galacticData.items.filter(item => 
+    
+    // Filter by search term first
+    const filtered = galacticData.items.filter(item => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm, galacticData]);
+
+    // Then apply sorting
+    return [...filtered].sort((a, b) => {
+      if (sortMode === 'tier') {
+        const tierA = itemTiers[a.name.toLowerCase()] || 1;
+        const tierB = itemTiers[b.name.toLowerCase()] || 1;
+        // Sort by tier descending, then by name ascending
+        if (tierA !== tierB) return tierB - tierA;
+        return a.name.localeCompare(b.name);
+      } else {
+        // Pure alphabetical
+        return a.name.localeCompare(b.name);
+      }
+    });
+  }, [searchTerm, galacticData, itemTiers, sortMode]);
 
   const toggleItem = (name: string) => {
     setSelectedItems(prev => 
@@ -64,6 +111,40 @@ const App: React.FC = () => {
       }
     }, 800);
   }, [selectedItems, galacticData]);
+
+  const getTierStyles = (name: string) => {
+    const tier = itemTiers[name.toLowerCase()] || 1;
+    switch (tier) {
+      case 4: return {
+        border: 'border-amber-500/40',
+        bg: 'bg-amber-500/5',
+        glow: 'shadow-[0_0_15px_rgba(245,158,11,0.1)]',
+        text: 'text-amber-400',
+        label: 'TIER 4'
+      };
+      case 3: return {
+        border: 'border-sky-500/40',
+        bg: 'bg-sky-500/5',
+        glow: 'shadow-[0_0_15px_rgba(14,165,233,0.1)]',
+        text: 'text-sky-400',
+        label: 'TIER 3'
+      };
+      case 2: return {
+        border: 'border-emerald-500/40',
+        bg: 'bg-emerald-500/5',
+        glow: 'shadow-[0_0_15px_rgba(16,185,129,0.1)]',
+        text: 'text-emerald-400',
+        label: 'TIER 2'
+      };
+      default: return {
+        border: 'border-white/10',
+        bg: 'bg-slate-900/40',
+        glow: '',
+        text: 'text-slate-400',
+        label: 'TIER 1'
+      };
+    }
+  };
 
   if (initializing) {
     return (
@@ -117,34 +198,53 @@ const App: React.FC = () => {
         </div>
         
         <div className="flex flex-col md:items-end gap-3 w-full md:w-auto animate-in fade-in slide-in-from-right-4 duration-500">
-          <div className="flex gap-2 w-full md:w-96">
-            {currentView === 'optimizer' && analysis && !loading ? (
-              <button 
-                onClick={() => setAnalysis(null)}
-                className="bg-slate-800 hover:bg-slate-700 text-white font-black px-6 py-2 rounded-lg text-xs transition-all border border-slate-600 flex items-center gap-2 whitespace-nowrap shadow-lg uppercase tracking-wider"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                Modify Selections
-              </button>
-            ) : currentView === 'optimizer' && (
-              <input 
-                type="text" 
-                placeholder="Filter blueprints..."
-                className="bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2 text-sm w-full focus:border-sky-500 outline-none transition-all focus:ring-1 focus:ring-sky-500/50"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex flex-wrap md:flex-nowrap gap-4 w-full md:w-auto">
+            {currentView === 'optimizer' && !analysis && (
+              <div className="flex bg-slate-900/80 p-1 rounded-lg border border-white/10 shrink-0">
+                <button 
+                  onClick={() => setSortMode('tier')}
+                  className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${sortMode === 'tier' ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  By Tier
+                </button>
+                <button 
+                  onClick={() => setSortMode('alphabetical')}
+                  className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${sortMode === 'alphabetical' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  A-Z
+                </button>
+              </div>
             )}
-            
-            {currentView === 'optimizer' && (
-              <button 
-                onClick={handleOptimize}
-                disabled={selectedItems.length === 0 || loading}
-                className={`bg-sky-600 hover:bg-sky-500 disabled:opacity-20 text-white font-bold px-6 py-2 rounded-lg text-sm transition-all whitespace-nowrap starfield-glow ${loading ? 'animate-pulse' : ''}`}
-              >
-                {loading ? 'CALCULATING...' : analysis ? 'REGENERATE' : 'GENERATE ROUTES'}
-              </button>
-            )}
+
+            <div className="flex gap-2 w-full md:w-96">
+              {currentView === 'optimizer' && analysis && !loading ? (
+                <button 
+                  onClick={() => setAnalysis(null)}
+                  className="bg-slate-800 hover:bg-slate-700 text-white font-black px-6 py-2 rounded-lg text-xs transition-all border border-slate-600 flex items-center gap-2 whitespace-nowrap shadow-lg uppercase tracking-wider"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  Modify Selections
+                </button>
+              ) : currentView === 'optimizer' && (
+                <input 
+                  type="text" 
+                  placeholder="Filter blueprints..."
+                  className="bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2 text-sm w-full focus:border-sky-500 outline-none transition-all focus:ring-1 focus:ring-sky-500/50"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              )}
+              
+              {currentView === 'optimizer' && (
+                <button 
+                  onClick={handleOptimize}
+                  disabled={selectedItems.length === 0 || loading}
+                  className={`bg-sky-600 hover:bg-sky-500 disabled:opacity-20 text-white font-bold px-6 py-2 rounded-lg text-sm transition-all whitespace-nowrap starfield-glow ${loading ? 'animate-pulse' : ''}`}
+                >
+                  {loading ? 'CALCULATING...' : analysis ? 'REGENERATE' : 'GENERATE ROUTES'}
+                </button>
+              )}
+            </div>
           </div>
           {currentView === 'optimizer' && (
             <div className="flex flex-wrap justify-end gap-2 min-h-[24px]">
@@ -183,39 +283,51 @@ const App: React.FC = () => {
         <>
           {!analysis && !loading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {filteredItems.map(item => (
-                <div 
-                  key={item.name} 
-                  onMouseEnter={() => setHoveredItem(item.name)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  onClick={() => toggleItem(item.name)}
-                  className={`glass p-6 rounded-2xl cursor-pointer relative group min-h-[160px] border flex flex-col item-card-hover ${
-                    selectedItems.includes(item.name) 
-                      ? 'border-sky-500 ring-1 ring-sky-500/50 bg-sky-500/10 shadow-[0_0_20px_rgba(56,189,248,0.1)]' 
-                      : 'border-white/5 hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-black text-slate-100 uppercase tracking-tight text-sm leading-tight group-hover:text-sky-400 transition-colors">{item.name}</h3>
-                    {selectedItems.includes(item.name) && (
-                      <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse mt-1 shrink-0"></div>
-                    )}
-                  </div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-widest font-mono mb-4">Manufacturing Tier Available</p>
-                  
-                  <div className="mt-auto">
-                    {hoveredItem === item.name ? (
-                      <div className="animate-in fade-in slide-in-from-top-1 duration-300">
-                        <RecipePreview itemName={item.name} allItems={galacticData!.items} />
+              {filteredItems.map(item => {
+                const styles = getTierStyles(item.name);
+                const isSelected = selectedItems.includes(item.name);
+                
+                return (
+                  <div 
+                    key={item.name} 
+                    onMouseEnter={() => setHoveredItem(item.name)}
+                    onMouseLeave={() => setHoveredItem(null)}
+                    onClick={() => toggleItem(item.name)}
+                    className={`glass p-6 rounded-2xl cursor-pointer relative group min-h-[160px] border flex flex-col item-card-hover transition-all duration-300 ${
+                      isSelected 
+                        ? 'border-sky-500 ring-2 ring-sky-500/30 bg-sky-500/10 shadow-[0_0_25px_rgba(56,189,248,0.2)]' 
+                        : `${styles.border} ${styles.bg} ${styles.glow}`
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className={`font-black uppercase tracking-tight text-sm leading-tight transition-colors ${isSelected ? 'text-white' : 'text-slate-100 group-hover:text-white'}`}>
+                        {item.name}
+                      </h3>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[8px] font-mono font-black px-1.5 py-0.5 rounded border border-white/5 bg-slate-950/50 ${isSelected ? 'text-sky-400 border-sky-500/30' : styles.text}`}>
+                          {styles.label}
+                        </span>
+                        {isSelected && (
+                          <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse mt-1 shadow-[0_0_8px_rgba(56,189,248,1)]"></div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300">
-                        <RecipePreview itemName={item.name} allItems={galacticData!.items} compact />
-                      </div>
-                    )}
+                    </div>
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-mono mb-4">Blueprints Verified</p>
+                    
+                    <div className="mt-auto">
+                      {hoveredItem === item.name ? (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                          <RecipePreview itemName={item.name} allItems={galacticData!.items} />
+                        </div>
+                      ) : (
+                        <div className="opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300">
+                          <RecipePreview itemName={item.name} allItems={galacticData!.items} compact />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

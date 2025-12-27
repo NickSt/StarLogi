@@ -44,9 +44,18 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
     const lowerQuery = query.toLowerCase();
     
     // Search Items: Match by recursive dependency check
-    const matchedItems = items.filter(item => 
-      matchesRecursively(item, lowerQuery, items)
-    );
+    const matchedItems = items.map(item => {
+      const hasRecursiveMatch = matchesRecursively(item, lowerQuery, items);
+      if (!hasRecursiveMatch) return null;
+
+      const isDirectNameMatch = item.name.toLowerCase().includes(lowerQuery);
+      const isDirectRequirementMatch = item.requirements.some(req => req.name.toLowerCase().includes(lowerQuery));
+      
+      // It's an indirect match if it matches recursively but not directly (as name or primary requirement)
+      const isIndirect = !isDirectNameMatch && !isDirectRequirementMatch;
+
+      return { ...item, isIndirect };
+    }).filter((i): i is (ItemData & { isIndirect: boolean }) => i !== null);
 
     // Search Planets: Match by planet name, system, or extractable resources
     const matchedPlanets = planets.filter(planet => 
@@ -56,10 +65,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
     );
 
     // Calculate "Best Match"
-    // Heuristic: Exact entity name match takes priority
     let bestMatch: { type: 'item' | 'planet', data: any } | null = null;
     
-    const exactItem = items.find(i => i.name.toLowerCase() === lowerQuery);
+    const exactItem = matchedItems.find(i => i.name.toLowerCase() === lowerQuery);
     const exactPlanet = planets.find(p => p.name.toLowerCase() === lowerQuery);
 
     if (exactItem) {
@@ -67,8 +75,6 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
     } else if (exactPlanet) {
       bestMatch = { type: 'planet', data: exactPlanet };
     } else {
-      // If no exact name match, check if we matched entity names partially
-      // Prioritizing items that match the name directly over those that match via recursion
       const nameMatchedItems = matchedItems.filter(i => i.name.toLowerCase().includes(lowerQuery));
       const nameMatchedPlanets = matchedPlanets.filter(p => p.name.toLowerCase().includes(lowerQuery));
 
@@ -134,7 +140,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
               </h2>
               <div className="space-y-4">
                 {results.otherItems.length > 0 ? (
-                  results.otherItems.slice(0, 15).map(item => (
+                  results.otherItems.slice(0, 20).map(item => (
                     <ItemResult key={item.name} item={item} allItems={items} onSelect={onSelectItem} />
                   ))
                 ) : (
@@ -167,23 +173,53 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
   );
 };
 
-const ItemResult: React.FC<{ item: ItemData, allItems: ItemData[], onSelect: (n: string) => void, spotlight?: boolean }> = ({ item, allItems, onSelect, spotlight }) => (
-  <div className={`glass-panel rounded-xl p-6 border border-white/5 group transition-all hover:border-amber-500/40 ${spotlight ? 'ring-2 ring-amber-500/20' : ''}`}>
-    <div className="flex justify-between items-start mb-4">
-      <div>
-        <h3 className={`font-black uppercase tracking-tight text-amber-100 ${spotlight ? 'text-2xl' : 'text-lg'}`}>{item.name}</h3>
-        <p className="text-[9px] font-mono text-amber-500/60 tracking-widest uppercase">Manufactured Component</p>
+const ItemResult: React.FC<{ item: ItemData & { isIndirect?: boolean }, allItems: ItemData[], onSelect: (n: string) => void, spotlight?: boolean }> = ({ item, allItems, onSelect, spotlight }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`glass-panel rounded-xl p-6 border border-white/5 group transition-all duration-300 relative overflow-hidden hover:border-amber-500/40 ${spotlight ? 'ring-2 ring-amber-500/20' : ''}`}
+    >
+      {item.isIndirect && (
+        <div className="absolute top-0 left-0 bg-indigo-500/20 border-b border-r border-indigo-500/30 px-3 py-1 rounded-br-lg z-10">
+          <span className="text-[8px] font-black text-indigo-300 uppercase tracking-[0.15em] flex items-center gap-1.5">
+            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            Indirect Dependency
+          </span>
+        </div>
+      )}
+
+      <div className={`flex justify-between items-start ${item.isIndirect ? 'mt-4' : ''}`}>
+        <div>
+          <h3 className={`font-black uppercase tracking-tight text-amber-100 transition-colors duration-300 group-hover:text-amber-400 ${spotlight ? 'text-2xl' : 'text-lg'}`}>{item.name}</h3>
+          <p className="text-[9px] font-mono text-amber-500/60 tracking-widest uppercase">Manufactured Component</p>
+        </div>
+        <button 
+          onClick={() => onSelect(item.name)}
+          className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-950 border border-amber-500/30 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shrink-0 ml-4"
+        >
+          Track
+        </button>
       </div>
-      <button 
-        onClick={() => onSelect(item.name)}
-        className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-950 border border-amber-500/30 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all"
-      >
-        Track for Logistics
-      </button>
+      
+      <div className={`grid transition-all duration-500 ease-in-out ${isHovered ? 'grid-rows-[1fr] opacity-100 mt-6' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
+        <div className="overflow-hidden">
+          <div className="pt-2 border-t border-white/5">
+            <RecipePreview itemName={item.name} allItems={allItems} />
+          </div>
+        </div>
+      </div>
+      
+      {!isHovered && !spotlight && (
+        <div className="mt-2 text-[8px] text-slate-600 font-bold uppercase tracking-widest animate-pulse">
+          Hover to expand blueprints
+        </div>
+      )}
     </div>
-    <RecipePreview itemName={item.name} allItems={allItems} />
-  </div>
-);
+  );
+};
 
 const PlanetResult: React.FC<{ planet: PlanetData, spotlight?: boolean }> = ({ planet, spotlight }) => (
   <div className={`glass-panel rounded-xl p-6 border border-white/5 group transition-all hover:border-sky-500/40 ${spotlight ? 'ring-2 ring-sky-500/20' : ''}`}>
