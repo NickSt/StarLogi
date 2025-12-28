@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlanetStrategy } from '../types';
 import { ResourceBadge } from './ResourceBadge';
 
@@ -7,16 +7,60 @@ interface PlanetCardProps {
   system: string;
   sites: PlanetStrategy[];
   index: number;
+  planetData?: any; // Add optional full planet data
 }
 
-export const PlanetCard: React.FC<PlanetCardProps> = ({ planetName, system, sites, index }) => {
-  const allResources = Array.from(new Set(sites.flatMap(s => s.resourcesFound)));
+export const PlanetCard: React.FC<PlanetCardProps> = ({ planetName, system, sites, index, planetData }) => {
+  const [isHovered, setIsHovered] = useState(false);
   const isAssemblyPlanet = sites.some(s => s.isAssemblyHub);
 
   return (
-    <div className={`glass-panel rounded-xl p-4 nasa-accent hover:border-sky-500/40 transition-all duration-300 relative overflow-hidden ${
-      isAssemblyPlanet ? 'border-amber-500/40 ring-1 ring-amber-500/10' : ''
-    }`}>
+    <div 
+      className={`glass-panel rounded-xl p-4 nasa-accent hover:border-sky-500/40 transition-all duration-300 relative overflow-visible ${
+        isAssemblyPlanet ? 'border-amber-500/40 ring-1 ring-amber-500/10' : ''
+      }`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Detailed Stats Hover Overlay */}
+      {isHovered && planetData && (
+        <div className="absolute z-50 left-0 right-0 -top-2 translate-y-[-100%] animate-in fade-in zoom-in duration-200 pointer-events-none">
+          <div className="glass-panel p-4 rounded-xl border border-sky-500/30 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div className="space-y-1">
+                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest leading-none">Atmosphere</p>
+                <p className="text-xs text-white font-mono uppercase truncate">{planetData.atmosphere || 'None'}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest leading-none">Gravity</p>
+                <p className="text-xs text-white font-mono uppercase">{planetData.gravity}G</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest leading-none">Temperature</p>
+                <p className="text-xs text-white font-mono uppercase">{planetData.temperature}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest leading-none">Type</p>
+                <p className="text-xs text-white font-mono uppercase">{planetData.type}</p>
+              </div>
+              <div className="col-span-2 border-t border-white/5 pt-2 mt-1">
+                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mb-1 leading-none text-center">Available Orbitals</p>
+                <div className="flex flex-wrap gap-1 justify-center">
+                  {planetData.resources?.slice(0, 8).map((res: string) => (
+                    <span key={res} className="text-[7px] bg-slate-800 text-slate-400 px-1 py-0.5 rounded font-mono">{res}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 text-[7px] text-sky-400/50 font-black uppercase tracking-tighter text-center italic">
+              Survey Data provided by Constellation Local Cache
+            </div>
+          </div>
+          {/* Tooltip arrow */}
+          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-sky-500/30 mx-auto"></div>
+        </div>
+      )}
+
       {/* Condensed Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-white/5">
         <div className="flex items-center gap-3">
@@ -77,14 +121,14 @@ export const PlanetCard: React.FC<PlanetCardProps> = ({ planetName, system, site
 
                 {/* Manufacturing Tasks */}
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {site.resourcesFound.length > 0 && <h5 className="text-sm font-bold w-full">Extracted</h5>}
+                  {site.resourcesFound.length > 0 && <h5 className="text-xs font-bold w-full">Extracted</h5>}
                   {site.resourcesFound.map((item, idx) => (
                     <div key={`res-${idx}`} className="text-[8px] font-black text-sky-400 uppercase flex items-center gap-1 bg-sky-500/5 px-1.5 py-0.5 rounded border border-sky-500/20">
                       <span className="w-1 h-1 bg-sky-500 rounded-sm"></span> {item}
                     </div>
                   ))}
                   {(hasManufacturedItems || hasFinalAssemblyItems) && <div className="w-full mt-2" />}
-                  {(hasManufacturedItems || hasFinalAssemblyItems) && <h5 className="text-sm font-bold w-full">Manufactured</h5>}
+                  {(hasManufacturedItems || hasFinalAssemblyItems) && <h5 className="text-xs font-bold w-full">Manufactured</h5>}
                   {site.finalAssemblyItems?.map((item, idx) => (
                     <div key={`fin-${idx}`} className="text-[8px] font-black text-amber-400 uppercase flex items-center gap-1 bg-amber-500/5 px-1.5 py-0.5 rounded border border-amber-500/20">
                       <span className="w-1 h-1 bg-amber-500 rounded-sm"></span> {item}

@@ -54,6 +54,60 @@ const App: React.FC = () => {
     }, 800);
   }, [selectedItems, galacticData, useBidirectional]);
 
+  const handleExport = useCallback(() => {
+    if (!analysis) return;
+
+    let exportContent = 'Starfield Outpost Plan\n';
+    exportContent += `Generated for: ${selectedItems.join(', ')}\n\n`;
+    exportContent += `------------------------------------\n`;
+    exportContent += `OUTPOSTS (${analysis.recommendedPlanets.length})\n`;
+    exportContent += `------------------------------------\n\n`;
+
+    analysis.recommendedPlanets.forEach((p, i) => {
+      exportContent += `${i + 1}. ${p.planetName.toUpperCase()}${p.isAssemblyHub ? ' (MAIN ASSEMBLY HUB)' : ''}\n`;
+      exportContent += `   System: ${p.system}\n`;
+      if (p.resourcesFound.length > 0) {
+        exportContent += `   Extracted: ${p.resourcesFound.join(', ')}\n`;
+      }
+      
+      const manufactured = [
+        ...(p.manufacturedItems || []),
+        ...(p.finalAssemblyItems || [])
+      ];
+
+      if (manufactured.length > 0) {
+        exportContent += `   Manufactured: ${manufactured.join(', ')}\n`;
+      }
+      exportContent += `\n`;
+    });
+
+    exportContent += `------------------------------------\n`;
+    exportContent += `CARGO LINKS\n`;
+    exportContent += `------------------------------------\n\n`;
+
+    analysis.recommendedPlanets.forEach(p => {
+      p.links.forEach(link => {
+        // Only list outgoing or bidirectional from this planet to avoid duplicates
+        if (link.direction === 'Outgoing' || link.direction === 'Bidirectional') {
+          exportContent += `${link.type.toUpperCase()}: ${link.cargo.join(' + ')}\n`;
+          exportContent += `  FROM: ${p.planetName.toUpperCase()}\n`;
+          exportContent += `  TO:   ${link.target.toUpperCase()}\n\n`;
+        }
+      });
+    });
+
+    const blob = new Blob([exportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'outpost-plan.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [analysis, selectedItems]);
+
+
   useEffect(() => {
     if (analysis) handleOptimize();
   }, [useBidirectional]);
@@ -173,13 +227,16 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap md:flex-nowrap gap-4 w-full md:w-auto">
-            <div className="flex gap-2 w-full md:w-96">
+            <div className="flex gap-2 w-full md:w-auto">
               {currentView === 'optimizer' && analysis && !loading ? (
-                <button onClick={() => setAnalysis(null)} className="bg-slate-800 hover:bg-slate-700 text-white font-black px-6 py-2 rounded-lg text-xs transition-all border border-slate-600 uppercase tracking-wider">Modify Selections</button>
+                <>
+                  <button onClick={() => setAnalysis(null)} className="bg-slate-800 hover:bg-slate-700 text-white font-black px-6 py-2 rounded-lg text-xs transition-all border border-slate-600 uppercase tracking-wider">Modify Selections</button>
+                  <button onClick={handleExport} className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-6 py-2 rounded-lg text-sm transition-all whitespace-nowrap">Export Plan</button>
+                </>
               ) : currentView === 'optimizer' && (
                 <input type="text" placeholder="Filter blueprints..." className="bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2 text-sm w-full outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               )}
-              {currentView === 'optimizer' && (
+              {currentView === 'optimizer' && !analysis && (
                 <button onClick={handleOptimize} disabled={selectedItems.length === 0 || loading} className={`bg-sky-600 hover:bg-sky-500 disabled:opacity-20 text-white font-bold px-6 py-2 rounded-lg text-sm transition-all whitespace-nowrap ${loading ? 'animate-pulse' : ''}`}>
                   {loading ? 'CALCULATING...' : 'GENERATE ROUTES'}
                 </button>
@@ -220,48 +277,55 @@ const App: React.FC = () => {
           )}
 
           {analysis && !loading && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-              <div className="lg:col-span-4 space-y-6">
-                <section className="glass-panel p-6 rounded-2xl nasa-accent starfield-glow sticky top-10">
-                  <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Intelligence Report</h2>
-                  <div className="flex justify-between items-end mb-6">
-                    <div>
-                      <p className="text-5xl font-black text-white tracking-tighter">{analysis.efficiencyScore}<span className="text-sky-500 text-2xl ml-1">%</span></p>
-                      <p className="text-[10px] text-sky-400 uppercase font-mono tracking-widest mt-1">Route Integrity</p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-xl font-black tracking-tighter ${analysis.outpostLimitReached ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
-                        {analysis.recommendedPlanets.length}<span className="text-[10px] text-slate-500 ml-1">/ 24</span>
-                      </p>
-                      <p className="text-[10px] text-slate-500 uppercase font-mono tracking-widest mt-1">Outpost Saturation</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-slate-400 leading-relaxed font-light italic bg-slate-900/50 p-4 rounded-xl border border-white/5">
-                    "{analysis.logisticalSummary}"
-                  </p>
-                </section>
-
-                <section className="glass-panel p-6 rounded-2xl">
-                  <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Required Extraction</h2>
-                  <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                    {analysis.totalResourcesRequired.map(res => (
-                      <div key={res.name} className="flex justify-between items-center bg-slate-800/20 p-3 rounded-lg border border-white/5 hover:border-sky-500/30 transition-all group">
-                        <span className="text-[11px] text-slate-300 font-medium group-hover:text-white">{res.name}</span>
-                        <span className="text-sky-400 font-mono text-[11px] font-black">x{res.amount}</span>
+            <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                  <section className="glass-panel p-6 rounded-2xl nasa-accent starfield-glow">
+                    <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Intelligence Report</h2>
+                    <div className="flex justify-between items-end mb-6">
+                      <div>
+                        <p className="text-5xl font-black text-white tracking-tighter">{analysis.efficiencyScore}<span className="text-sky-500 text-2xl ml-1">%</span></p>
+                        <p className="text-[10px] text-sky-400 uppercase font-mono tracking-widest mt-1">Route Integrity</p>
                       </div>
-                    ))}
-                  </div>
-                </section>
+                      <div className="text-right">
+                        <p className={`text-xl font-black tracking-tighter ${analysis.outpostLimitReached ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
+                          {analysis.recommendedPlanets.length}<span className="text-[10px] text-slate-500 ml-1">/ 24</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 uppercase font-mono tracking-widest mt-1">Outpost Saturation</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-400 leading-relaxed font-light italic bg-slate-900/50 p-4 rounded-xl border border-white/5">
+                      "{analysis.logisticalSummary}"
+                    </p>
+                  </section>
+
+                  <section className="glass-panel p-6 rounded-2xl flex flex-col flex-grow">
+                    <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Required Extraction</h2>
+                    <div className="relative flex-1 min-h-0">
+                      <div className="absolute inset-0 overflow-y-auto custom-scrollbar pr-2">
+                        <div className="grid grid-cols-1 gap-2">
+                          {analysis.totalResourcesRequired.map(res => (
+                            <div key={res.name} className="flex justify-between items-center bg-slate-800/20 p-3 rounded-lg border border-white/5 hover:border-sky-500/30 transition-all group">
+                              <span className="text-[11px] text-slate-300 font-medium group-hover:text-white">{res.name}</span>
+                              <span className="text-sky-400 font-mono text-[11px] font-black">x{res.amount}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="lg:col-span-8">
+                  <NetworkGraph analysis={analysis} />
+                </div>
               </div>
 
-              <div className="lg:col-span-8 space-y-8">
-                <NetworkGraph analysis={analysis} />
-                {/* Multi-column adjustment for PlanetCards based on screen size */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                  {groupedPlanets.map((group, idx) => (
-                    <PlanetCard key={group.name} planetName={group.name} system={group.system} sites={group.sites} index={idx} />
-                  ))}
-                </div>
+              {/* Planet Cards now span the full width below the main grid */}
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                {groupedPlanets.map((group, idx) => (
+                  <PlanetCard key={group.name} planetName={group.name} system={group.system} sites={group.sites} index={idx} />
+                ))}
               </div>
             </div>
           )}

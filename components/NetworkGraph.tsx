@@ -38,7 +38,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
     });
 
     const maxDensity = Math.max(...Object.values(tierCounts));
-    const calculatedHeight = Math.max(500, maxDensity * 120);
+    const calculatedHeight = Math.max(700, maxDensity * 140);
 
     const planetNodes: Node[] = planets.map((p) => {
       const tier = tierMap[p.planetName];
@@ -95,8 +95,8 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
         </div>
       </div>
 
-      <div className="relative overflow-y-auto custom-scrollbar" style={{ maxHeight: '600px' }}>
-        <svg viewBox={`0 0 ${width} ${dynamicHeight}`} className="w-full h-auto bg-slate-950/30 rounded-lg" style={{ minHeight: '500px' }}>
+      <div className="relative overflow-y-auto custom-scrollbar" style={{ maxHeight: '800px' }}>
+        <svg viewBox={`0 0 ${width} ${dynamicHeight}`} className="w-full h-auto bg-slate-950/30 rounded-lg" style={{ minHeight: '700px' }}>
           <defs>
             <marker id="arrowhead-local" markerWidth="6" markerHeight="6" refX="18" refY="3" orient="auto">
               <path d="M0,0 L6,3 L0,6 Z" fill="#0ea5e9" />
