@@ -323,9 +323,13 @@ const App: React.FC = () => {
 
               {/* Planet Cards now span the full width below the main grid */}
               <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                {groupedPlanets.map((group, idx) => (
-                  <PlanetCard key={group.name} planetName={group.name} system={group.system} sites={group.sites} index={idx} />
-                ))}
+                {groupedPlanets.map((group, idx) => {
+                  // Find the matching full planet data for hover stats
+                  const fullPlanetData = galacticData?.planets.find(p => p.name === group.name);
+                  return (
+                    <PlanetCard key={group.name} planetName={group.name} system={group.system} sites={group.sites} index={idx} planetData={fullPlanetData} />
+                  );
+                })}
               </div>
             </div>
           )}
