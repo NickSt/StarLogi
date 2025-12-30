@@ -59,10 +59,37 @@ const TYPO_FIXES: Record<string, string> = {
   "Caesium": "Cesium"
 };
 
+// Raw JSON interfaces
+interface GalaxyRaw {
+  name: string;
+  system: string;
+  atmosphere: string;
+  gravity: number;
+  temperature: string;
+  type: string;
+  water: string;
+  resources: string[];
+}
+
+interface RecipeRequirementRaw {
+  name: string;
+  quantity: number;
+}
+
+interface RecipeRaw {
+  name: string;
+  requires: RecipeRequirementRaw[];
+}
+
+interface ResourceRaw {
+  resource: string;
+  type: 'organic' | 'inorganic' | 'manufactured';
+}
+
 export async function fetchGalacticData(): Promise<{ items: ItemData[], planets: PlanetData[], resourceTypes: Record<string, 'organic' | 'inorganic' | 'manufactured'> }> {
-  let galaxyJson: any;
-  let recipesJson: any;
-  let resourcesJson: any;
+  let galaxyJson: GalaxyRaw[];
+  let recipesJson: RecipeRaw[];
+  let resourcesJson: ResourceRaw[];
 
   try {
     /**
@@ -80,9 +107,9 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
       throw new Error(`Asset link failed: Galaxy ${gRes.status}, Recipes ${rRes.status}, Resources ${resRes.status}`);
     }
 
-    galaxyJson = await gRes.json();
-    recipesJson = await rRes.json();
-    resourcesJson = await resRes.json();
+    galaxyJson = await gRes.json() as GalaxyRaw[];
+    recipesJson = await rRes.json() as RecipeRaw[];
+    resourcesJson = await resRes.json() as ResourceRaw[];
   } catch (err: unknown) {
     console.error("Database connection failed:", err);
     const msg = err instanceof Error ? err.message : String(err);
@@ -91,11 +118,11 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
 
   try {
     // Process Planets
-    const planets: PlanetData[] = (galaxyJson as any[]).map((p: any) => ({
+    const planets: PlanetData[] = galaxyJson.map((p) => ({
       name: p.name,
       system: p.system,
       atmosphere: p.atmosphere,
-      gravity: p.gravity,
+      gravity: typeof p.gravity === 'string' ? parseFloat(p.gravity) : p.gravity, // Ensure number 
       temperature: p.temperature,
       type: p.type,
       water: p.water,
@@ -104,9 +131,9 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     }));
 
     // Process Constructible Items
-    const items: ItemData[] = (recipesJson as any[]).map((r: any) => ({
+    const items: ItemData[] = recipesJson.map((r) => ({
       name: r.name,
-      requirements: (r.requires || []).map((req: any) => {
+      requirements: (r.requires || []).map((req) => {
         const rawName = req.name;
         const fixedName = TYPO_FIXES[rawName] || rawName;
         return {
@@ -121,7 +148,7 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
 
     // Process Resource Types
     const resourceTypes: Record<string, 'organic' | 'inorganic' | 'manufactured'> = {};
-    (resourcesJson as any[]).forEach((r: any) => {
+    resourcesJson.forEach((r) => {
       resourceTypes[r.resource] = r.type;
     });
 

@@ -15,6 +15,14 @@ interface Node {
   radius: number;
 }
 
+interface VisualLink {
+  source: Node;
+  target: Node;
+  type: string;
+  cargo: string[];
+  isBidirectional: boolean;
+}
+
 export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
   const width = 800;
 
@@ -51,7 +59,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
       return { id: p.planetName, x, y, planet: p, tier, radius: getRadius(p) };
     });
 
-    const links: any[] = [];
+    const links: VisualLink[] = [];
     planetNodes.forEach(sourceNode => {
       sourceNode.planet.links.forEach(link => {
         const targetNode = planetNodes.find(n => n.id === link.target);
