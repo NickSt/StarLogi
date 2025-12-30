@@ -56,9 +56,6 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
       sourceNode.planet.links.forEach(link => {
         const targetNode = planetNodes.find(n => n.id === link.target);
         if (targetNode && (link.direction === 'Outgoing' || link.direction === 'Bidirectional')) {
-          const dx = targetNode.x - sourceNode.x;
-          const dy = targetNode.y - sourceNode.y;
-
           links.push({
             source: sourceNode,
             target: targetNode,
