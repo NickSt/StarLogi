@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ItemData } from '../types';
+import { ItemData } from '@/types';
 
 interface RecipePreviewProps {
   itemName: string;
@@ -18,7 +18,7 @@ const TreeNode: React.FC<{ name: string; amount: string; depth: number; isLast: 
       {!isLast && <div className="tree-line-v"></div>}
       {isLast && hasChildren && <div className="tree-line-v h-[12px] !bottom-auto"></div>}
       <div className="tree-line-h"></div>
-      
+
       <div className="flex justify-between items-center text-[10px] group/node">
         <span className={`${hasChildren ? 'text-sky-300 font-bold' : 'text-slate-400 font-medium'} truncate`}>
           {name}
@@ -29,10 +29,10 @@ const TreeNode: React.FC<{ name: string; amount: string; depth: number; isLast: 
       {hasChildren && (
         <div className="mt-1 animate-in slide-in-from-left-2 duration-300">
           {item.requirements.map((req, idx) => (
-            <TreeNode 
+            <TreeNode
               key={`${req.name}-${idx}`}
-              name={req.name} 
-              amount={req.amount} 
+              name={req.name}
+              amount={req.amount}
               depth={depth + 1}
               isLast={idx === item.requirements.length - 1}
               allItems={allItems}
@@ -70,10 +70,10 @@ export const RecipePreview: React.FC<RecipePreviewProps> = ({ itemName, allItems
       </div>
       <div className="pl-1 pb-1">
         {item.requirements.map((req, idx) => (
-          <TreeNode 
+          <TreeNode
             key={`${req.name}-${idx}`}
-            name={req.name} 
-            amount={req.amount} 
+            name={req.name}
+            amount={req.amount}
             depth={0}
             isLast={idx === item.requirements.length - 1}
             allItems={allItems}

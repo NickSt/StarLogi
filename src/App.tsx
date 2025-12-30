@@ -1,15 +1,15 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { getLocalConstructionStrategy } from './services/localOptimizer';
-import { fetchGalacticData } from './services/dataService';
-import { ConstructionAnalysis, ItemData, PlanetData, PlanetStrategy } from './types';
-import { PlanetCard } from './components/PlanetCard';
-import { NetworkGraph } from './components/NetworkGraph';
-import { RecipePreview } from './components/RecipePreview';
-import { SearchView } from './components/SearchView';
+import { getLocalConstructionStrategy } from '@/services/localOptimizer';
+import { fetchGalacticData } from '@/services/dataService';
+import { ConstructionAnalysis, ItemData, PlanetData, PlanetStrategy } from '@/types';
+import { PlanetCard } from '@/components/PlanetCard';
+import { NetworkGraph } from '@/components/NetworkGraph';
+import { RecipePreview } from '@/components/RecipePreview';
+import { SearchView } from '@/components/SearchView';
 
 type ViewMode = 'optimizer' | 'search';
-type SortMode = 'tier' | 'alphabetical';
+// type SortMode = 'tier' | 'alphabetical'; // Unused for now
 
 const App: React.FC = () => {
   const [galacticData, setGalacticData] = useState<{ items: ItemData[], planets: PlanetData[], resourceTypes: Record<string, string> } | null>(null);
@@ -19,9 +19,10 @@ const App: React.FC = () => {
   const [initializing, setInitializing] = useState(true);
   const [analysis, setAnalysis] = useState<ConstructionAnalysis | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // Unused
   const [currentView, setCurrentView] = useState<ViewMode>('optimizer');
-  const [sortMode, setSortMode] = useState<SortMode>('tier');
+  // const [sortMode, setSortMode] = useState<SortMode>('tier'); // Unused
+  const sortMode = 'tier'; // Defaulting usage for now to keep logic intact
   const [useBidirectional, setUseBidirectional] = useState(false);
 
   useEffect(() => {
@@ -29,8 +30,10 @@ const App: React.FC = () => {
       try {
         const data = await fetchGalacticData();
         setGalacticData(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error(err.message);
+        }
       } finally {
         setInitializing(false);
       }
@@ -101,7 +104,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (analysis) handleOptimize();
-  }, [useBidirectional]);
+  }, [useBidirectional, analysis, handleOptimize]);
 
   const itemTiers = useMemo(() => {
     if (!galacticData) return {};

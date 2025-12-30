@@ -1,4 +1,4 @@
-import { ItemData, PlanetData } from "../types";
+import { ItemData, PlanetData } from '@/types';
 
 /**
  * Symbol mapping to convert symbols in galaxy.json to full names used in recipes.json
@@ -83,9 +83,10 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     galaxyJson = await gRes.json();
     recipesJson = await rRes.json();
     resourcesJson = await resRes.json();
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Database connection failed:", err);
-    throw new Error(`Logistics link failure: Could not reach galactic data. ${err.message}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Logistics link failure: Could not reach galactic data. ${msg}`);
   }
 
   try {
@@ -93,6 +94,11 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     const planets: PlanetData[] = (galaxyJson as any[]).map((p: any) => ({
       name: p.name,
       system: p.system,
+      atmosphere: p.atmosphere,
+      gravity: p.gravity,
+      temperature: p.temperature,
+      type: p.type,
+      water: p.water,
       // Map symbols to names, otherwise keep original
       resources: (p.resources || []).map((res: string) => RESOURCE_MAPPING[res] || res)
     }));
@@ -124,8 +130,9 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
       planets: planets.sort((a, b) => a.name.localeCompare(b.name)),
       resourceTypes
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Data processing failure:", error);
-    throw new Error(`Corrupted galactic data: ${error.message}`);
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Corrupted galactic data: ${msg}`);
   }
 }

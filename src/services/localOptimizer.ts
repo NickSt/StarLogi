@@ -1,5 +1,4 @@
-
-import { ConstructionAnalysis, PlanetStrategy, ItemData, PlanetData, TransitLink } from "../types";
+import { ConstructionAnalysis, PlanetStrategy, ItemData, PlanetData } from '@/types';
 
 const MAX_LINKS_PER_OUTPOST = 6;
 const MAX_OUTPOSTS = 24;
@@ -29,8 +28,8 @@ function buildDependencyTree(itemNames: string[], allItems: ItemData[]): Depende
 }
 
 export const getLocalConstructionStrategy = (
-  itemNames: string[], 
-  allItems: ItemData[], 
+  itemNames: string[],
+  allItems: ItemData[],
   allPlanets: PlanetData[],
   useBidirectional: boolean = false
 ): ConstructionAnalysis => {
@@ -73,7 +72,7 @@ export const getLocalConstructionStrategy = (
   }
 
   // 2. Map Raw Resources to Planets (The "Extraction Layer")
-  const sortedPlanets = [...allPlanets].sort((a, b) => 
+  const sortedPlanets = [...allPlanets].sort((a, b) =>
     b.resources.filter(r => requiredRaws.has(r)).length - a.resources.filter(r => requiredRaws.has(r)).length
   );
 
@@ -101,16 +100,16 @@ export const getLocalConstructionStrategy = (
     let maxScore = -1;
 
     for (const strat of strategies.values()) {
-        const score = node.children.filter(c => strat.resourcesFound.includes(c.node.name)).length;
-        if (score > maxScore) { maxScore = score; bestHub = strat; }
+      const score = node.children.filter(c => strat.resourcesFound.includes(c.node.name)).length;
+      if (score > maxScore) { maxScore = score; bestHub = strat; }
     }
 
     const finalHub = bestHub || Array.from(strategies.values())[0];
     node.assignedPlanet = finalHub.planetName;
     componentToOutpostMap.set(node.name, finalHub.planetName);
     if (!finalHub.manufacturedItems?.includes(node.name)) {
-        finalHub.manufacturedItems?.push(node.name);
-        finalHub.isManufacturingSite = true;
+      finalHub.manufacturedItems?.push(node.name);
+      finalHub.isManufacturingSite = true;
     }
   }
   roots.forEach(assignManufacturing);
@@ -132,7 +131,7 @@ export const getLocalConstructionStrategy = (
         // Find existing link to reuse
         link = source.links.find(l => l.direction !== 'Incoming');
         if (link) {
-            source.notes = "SLOT LIMIT: Cargo merged onto existing line.";
+          source.notes = "SLOT LIMIT: Cargo merged onto existing line.";
         }
       }
     }
@@ -149,28 +148,28 @@ export const getLocalConstructionStrategy = (
     // Check components manufactured here
     const itemsMadeHere = [...(strat.manufacturedItems || [])];
     if (roots.some(r => r.assignedPlanet === strat.planetName)) {
-        itemsMadeHere.push(...itemNames);
+      itemsMadeHere.push(...itemNames);
     }
 
     itemsMadeHere.forEach(itemName => {
-       const recipe = allItems.find(i => i.name === itemName);
-       if (!recipe) return;
-       recipe.requirements.forEach(req => {
-          const sourcePlanet = resourceToOutpostMap.get(req.name) || componentToOutpostMap.get(req.name);
-          if (sourcePlanet && sourcePlanet !== strat.planetName) {
-            addLink(sourcePlanet, strat.planetName, req.name);
-          }
-       });
+      const recipe = allItems.find(i => i.name === itemName);
+      if (!recipe) return;
+      recipe.requirements.forEach(req => {
+        const sourcePlanet = resourceToOutpostMap.get(req.name) || componentToOutpostMap.get(req.name);
+        if (sourcePlanet && sourcePlanet !== strat.planetName) {
+          addLink(sourcePlanet, strat.planetName, req.name);
+        }
+      });
     });
   });
 
   // 5. Restore Helium-3 Fuel Logic
   const finalPlanets = Array.from(strategies.values());
-  const he3GlobalProvider = finalPlanets.find(p => p.resourcesFound.includes("Helium-3")) || 
-                             getOrCreateStrategy(allPlanets.find(p => p.resources.includes("Helium-3")) || allPlanets[0]);
-  
+  const he3GlobalProvider = finalPlanets.find(p => p.resourcesFound.includes("Helium-3")) ||
+    getOrCreateStrategy(allPlanets.find(p => p.resources.includes("Helium-3")) || allPlanets[0]);
+
   if (!he3GlobalProvider.resourcesFound.includes("Helium-3")) {
-      he3GlobalProvider.resourcesFound.push("Helium-3");
+    he3GlobalProvider.resourcesFound.push("Helium-3");
   }
 
   finalPlanets.forEach(strat => {

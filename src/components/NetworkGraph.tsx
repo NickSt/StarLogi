@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { ConstructionAnalysis, PlanetStrategy } from '../types';
+import { ConstructionAnalysis, PlanetStrategy } from '@/types';
 
 interface NetworkGraphProps {
   analysis: ConstructionAnalysis;
@@ -17,7 +17,7 @@ interface Node {
 
 export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
   const width = 800;
-  
+
   const getRadius = (p: PlanetStrategy) => {
     if (p.isAssemblyHub) return 20;
     if (p.manufacturedItems && p.manufacturedItems.length > 0) return 16;
@@ -28,7 +28,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
     const planets = analysis.recommendedPlanets;
     const tierMap: Record<string, number> = {};
     const tierCounts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
-    
+
     planets.forEach(p => {
       let tier = 2;
       if (p.isAssemblyHub) tier = 0;
@@ -44,10 +44,10 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
       const tier = tierMap[p.planetName];
       const tierNodes = planets.filter(pl => tierMap[pl.planetName] === tier);
       const indexInTier = tierNodes.indexOf(p);
-      
+
       const x = 150 + (tier * 250);
       const y = (calculatedHeight / (tierNodes.length + 1)) * (indexInTier + 1);
-      
+
       return { id: p.planetName, x, y, planet: p, tier, radius: getRadius(p) };
     });
 
@@ -58,7 +58,6 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
         if (targetNode && (link.direction === 'Outgoing' || link.direction === 'Bidirectional')) {
           const dx = targetNode.x - sourceNode.x;
           const dy = targetNode.y - sourceNode.y;
-          const angle = Math.atan2(dy, dx);
 
           links.push({
             source: sourceNode,
@@ -110,7 +109,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
             const isInter = link.type === 'Inter-System';
             const color = isInter ? '#f59e0b' : '#0ea5e9';
             const isBidirectional = link.isBidirectional;
-            
+
             return (
               <g key={`link-${i}`}>
                 <path
@@ -140,12 +139,12 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ analysis }) => {
             const isHub = node.planet.isAssemblyHub;
             const isFactory = node.planet.manufacturedItems && node.planet.manufacturedItems.length > 0;
             const needsFuel = node.planet.requiresHe3;
-            
+
             return (
               <g key={node.id} className="cursor-pointer group">
                 <circle cx={node.x} cy={node.y} r={node.radius + 4} fill="transparent" className={isHub ? "stroke-amber-500/10" : isFactory ? "stroke-sky-500/10" : "stroke-slate-500/5"} strokeWidth="4" />
                 <circle cx={node.x} cy={node.y} r={node.radius} fill={isHub ? "#f59e0b" : isFactory ? "#0ea5e9" : "#1e293b"} stroke={isHub ? "#fbbf24" : isFactory ? "#38bdf8" : "#475569"} strokeWidth="2" />
-                
+
                 {needsFuel && <circle cx={node.x + 8} cy={node.y - 8} r="4" fill="#fbbf24" className="animate-pulse" />}
 
                 <text x={node.x} y={node.y + 35} textAnchor="middle" fill="white" fontSize="9" className="font-black uppercase tracking-tight" style={{ paintOrder: 'stroke', stroke: '#020617', strokeWidth: '3px' }}>{node.planet.planetName}</text>

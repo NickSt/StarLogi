@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { PlanetStrategy } from '../types';
-import { ResourceBadge } from './ResourceBadge';
+import React, { useState } from 'react';
+import { PlanetData, PlanetStrategy } from '@/types';
 
 interface PlanetCardProps {
   planetName: string;
   system: string;
   sites: PlanetStrategy[];
   index: number;
-  planetData?: any; // Add optional full planet data
+  planetData?: PlanetData; // Add optional full planet data
   resourceTypes?: Record<string, string>;
 }
 

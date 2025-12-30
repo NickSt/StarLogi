@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { PlanetData, ItemData } from '../types';
+import { PlanetData, ItemData } from '@/types';
 import { RecipePreview } from './RecipePreview';
 import { ResourceBadge } from './ResourceBadge';
 
@@ -40,9 +40,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
 
   const results = useMemo(() => {
     if (!query.trim()) return { bestMatch: null, otherPlanets: [], otherItems: [] };
-    
+
     const lowerQuery = query.toLowerCase();
-    
+
     // Search Items: Match by recursive dependency check
     const matchedItems = items.map(item => {
       const hasRecursiveMatch = matchesRecursively(item, lowerQuery, items);
@@ -50,7 +50,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
 
       const isDirectNameMatch = item.name.toLowerCase().includes(lowerQuery);
       const isDirectRequirementMatch = item.requirements.some(req => req.name.toLowerCase().includes(lowerQuery));
-      
+
       // It's an indirect match if it matches recursively but not directly (as name or primary requirement)
       const isIndirect = !isDirectNameMatch && !isDirectRequirementMatch;
 
@@ -58,15 +58,15 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
     }).filter((i): i is (ItemData & { isIndirect: boolean }) => i !== null);
 
     // Search Planets: Match by planet name, system, or extractable resources
-    const matchedPlanets = planets.filter(planet => 
-      planet.name.toLowerCase().includes(lowerQuery) || 
+    const matchedPlanets = planets.filter(planet =>
+      planet.name.toLowerCase().includes(lowerQuery) ||
       planet.system.toLowerCase().includes(lowerQuery) ||
       planet.resources.some(r => r.toLowerCase().includes(lowerQuery))
     );
 
     // Calculate "Best Match"
-    let bestMatch: { type: 'item' | 'planet', data: any } | null = null;
-    
+    let bestMatch: { type: 'item'; data: ItemData } | { type: 'planet'; data: PlanetData } | null = null;
+
     const exactItem = matchedItems.find(i => i.name.toLowerCase() === lowerQuery);
     const exactPlanet = planets.find(p => p.name.toLowerCase() === lowerQuery);
 
@@ -94,8 +94,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ planets, items, onSelect
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="max-w-2xl mx-auto">
         <div className="relative group">
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Search planets, resources, or blueprints (e.g. 'Iron', 'Sol', 'Manifold')"
             className="w-full bg-slate-900/60 border-2 border-slate-800 rounded-2xl px-6 py-4 text-lg focus:border-sky-500 outline-none transition-all placeholder:text-slate-600 shadow-2xl focus:ring-4 focus:ring-sky-500/10"
             value={query}
@@ -177,7 +177,7 @@ const ItemResult: React.FC<{ item: ItemData & { isIndirect?: boolean }, allItems
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div 
+    <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`glass-panel rounded-xl p-6 border border-white/5 group transition-all duration-300 relative overflow-hidden hover:border-amber-500/40 ${spotlight ? 'ring-2 ring-amber-500/20' : ''}`}
@@ -196,14 +196,14 @@ const ItemResult: React.FC<{ item: ItemData & { isIndirect?: boolean }, allItems
           <h3 className={`font-black uppercase tracking-tight text-amber-100 transition-colors duration-300 group-hover:text-amber-400 ${spotlight ? 'text-2xl' : 'text-lg'}`}>{item.name}</h3>
           <p className="text-[9px] font-mono text-amber-500/60 tracking-widest uppercase">Manufactured Component</p>
         </div>
-        <button 
+        <button
           onClick={() => onSelect(item.name)}
           className="bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-slate-950 border border-amber-500/30 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shrink-0 ml-4"
         >
           Track
         </button>
       </div>
-      
+
       <div className={`grid transition-all duration-500 ease-in-out ${isHovered ? 'grid-rows-[1fr] opacity-100 mt-6' : 'grid-rows-[0fr] opacity-0 mt-0'}`}>
         <div className="overflow-hidden">
           <div className="pt-2 border-t border-white/5">
@@ -211,7 +211,7 @@ const ItemResult: React.FC<{ item: ItemData & { isIndirect?: boolean }, allItems
           </div>
         </div>
       </div>
-      
+
       {!isHovered && !spotlight && (
         <div className="mt-2 text-[8px] text-slate-600 font-bold uppercase tracking-widest animate-pulse">
           Hover to expand blueprints

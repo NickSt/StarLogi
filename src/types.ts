@@ -63,4 +63,9 @@ export interface PlanetData {
   name: string;
   system: string;
   resources: string[];
+  atmosphere: string;
+  gravity: number;
+  temperature: string;
+  type: string;
+  water: string;
 }
