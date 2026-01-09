@@ -60,30 +60,77 @@ const TYPO_FIXES: Record<string, string> = {
 };
 
 // Raw JSON interfaces
-interface GalaxyRaw {
+export interface GalaxyRaw {
   name: string;
   system: string;
   atmosphere: string;
-  gravity: number;
+  gravity: number | string;
   temperature: string;
   type: string;
   water: string;
   resources: string[];
 }
 
-interface RecipeRequirementRaw {
+export interface RecipeRequirementRaw {
   name: string;
   quantity: number;
 }
 
-interface RecipeRaw {
+export interface RecipeRaw {
   name: string;
   requires: RecipeRequirementRaw[];
 }
 
-interface ResourceRaw {
+export interface ResourceRaw {
   resource: string;
   type: 'organic' | 'inorganic' | 'manufactured';
+}
+
+/**
+ * Internal helper for processing raw planet data
+ */
+export function processPlanets(raw: GalaxyRaw[]): PlanetData[] {
+  return raw.map((p) => ({
+    name: p.name,
+    system: p.system,
+    atmosphere: p.atmosphere,
+    gravity: typeof p.gravity === 'string' ? parseFloat(p.gravity) : p.gravity,
+    temperature: p.temperature,
+    type: p.type,
+    water: p.water,
+    resources: (p.resources || []).map((res: string) => RESOURCE_MAPPING[res] || res)
+  })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Internal helper for processing raw recipe data
+ */
+export function processItems(raw: RecipeRaw[]): ItemData[] {
+  const items: ItemData[] = raw.map((r) => ({
+    name: r.name,
+    requirements: (r.requires || []).map((req) => {
+      const rawName = req.name;
+      const fixedName = TYPO_FIXES[rawName] || rawName;
+      return {
+        name: fixedName,
+        amount: req.quantity.toString()
+      };
+    })
+  }));
+
+  return Array.from(new Map(items.map(item => [item.name, item])).values())
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Internal helper for processing raw resource type data
+ */
+export function processResourceTypes(raw: ResourceRaw[]): Record<string, 'organic' | 'inorganic' | 'manufactured'> {
+  const resourceTypes: Record<string, 'organic' | 'inorganic' | 'manufactured'> = {};
+  raw.forEach((r) => {
+    resourceTypes[r.resource] = r.type;
+  });
+  return resourceTypes;
 }
 
 export async function fetchGalacticData(): Promise<{ items: ItemData[], planets: PlanetData[], resourceTypes: Record<string, 'organic' | 'inorganic' | 'manufactured'> }> {
@@ -111,54 +158,17 @@ export async function fetchGalacticData(): Promise<{ items: ItemData[], planets:
     recipesJson = await rRes.json() as RecipeRaw[];
     resourcesJson = await resRes.json() as ResourceRaw[];
   } catch (err: unknown) {
-    console.error("Database connection failed:", err);
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`Logistics link failure: Could not reach galactic data. ${msg}`);
   }
 
   try {
-    // Process Planets
-    const planets: PlanetData[] = galaxyJson.map((p) => ({
-      name: p.name,
-      system: p.system,
-      atmosphere: p.atmosphere,
-      gravity: typeof p.gravity === 'string' ? parseFloat(p.gravity) : p.gravity, // Ensure number 
-      temperature: p.temperature,
-      type: p.type,
-      water: p.water,
-      // Map symbols to names, otherwise keep original
-      resources: (p.resources || []).map((res: string) => RESOURCE_MAPPING[res] || res)
-    }));
-
-    // Process Constructible Items
-    const items: ItemData[] = recipesJson.map((r) => ({
-      name: r.name,
-      requirements: (r.requires || []).map((req) => {
-        const rawName = req.name;
-        const fixedName = TYPO_FIXES[rawName] || rawName;
-        return {
-          name: fixedName,
-          amount: req.quantity.toString()
-        };
-      })
-    }));
-
-    const uniqueItems = Array.from(new Map(items.map(item => [item.name, item])).values())
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    // Process Resource Types
-    const resourceTypes: Record<string, 'organic' | 'inorganic' | 'manufactured'> = {};
-    resourcesJson.forEach((r) => {
-      resourceTypes[r.resource] = r.type;
-    });
-
     return {
-      items: uniqueItems,
-      planets: planets.sort((a, b) => a.name.localeCompare(b.name)),
-      resourceTypes
+      items: processItems(recipesJson),
+      planets: processPlanets(galaxyJson),
+      resourceTypes: processResourceTypes(resourcesJson)
     };
   } catch (error: unknown) {
-    console.error("Data processing failure:", error);
     const msg = error instanceof Error ? error.message : String(error);
     throw new Error(`Corrupted galactic data: ${msg}`);
   }
